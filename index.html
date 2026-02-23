@@ -717,7 +717,11 @@ function generaPDF(p) {
   doc.setFontSize(7); doc.setTextColor(255,255,255);
   doc.text('fischer Italia Srl  |  ' + (pr.fisInd||'Via Torri Bianche 1, 20871 Vimercate (MB)') + '  |  ' + (pr.fisWeb||'www.fischer.it'), W/2, 292, {align:'center'});
 
-  const fname = 'Offerta_Fischer_' + (p.numero||p.id) + '_' + (p.cliente?.nome||'cliente').replace(/\s+/g,'_') + '.pdf';
+  // Nome file: Numero_Data_Cliente.pdf
+  const dataStr = p.data ? new Date(p.data).toLocaleDateString('it-IT').replace(/\//g,'-') : '';
+  const clienteStr = (p.cliente && p.cliente.nome ? p.cliente.nome : 'cliente').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-]/g,'');
+  const numStr = (p.numero || String(p.id)).replace(/[^a-zA-Z0-9\-]/g,'_');
+  const fname = numStr + (dataStr ? '_' + dataStr : '') + (clienteStr ? '_' + clienteStr : '') + '.pdf';
   // data URI — unico metodo garantito su Safari iOS con file://
   const dataUri = doc.output('datauristring');
   mostraModalPDF(fname, dataUri);
@@ -815,7 +819,8 @@ let pinMode = 'login'; // 'login' | 'setup' | 'confirm'
 let pinTemp = '';
 
 function initPin() {
-  const saved = localStorage.getItem('fis_pin');
+  const db = getDB();
+  const saved = db.prof && db.prof.pin ? db.prof.pin : null;
   const screen = document.getElementById('pin-screen');
   const app = document.getElementById('app-content');
   if (!saved) {
@@ -868,7 +873,7 @@ function handlePin() {
     pinMode = 'confirm';
   } else if (pinMode === 'confirm') {
     if (pinInput === pinTemp) {
-      localStorage.setItem('fis_pin', pinInput);
+      const db2 = getDB(); db2.prof = db2.prof||{}; db2.prof.pin = pinInput; saveDB(db2);
       sblocca();
     } else {
       document.getElementById('pin-error').textContent = 'I PIN non coincidono. Riprova.';
@@ -880,7 +885,7 @@ function handlePin() {
     }
   } else {
     // login
-    const saved = localStorage.getItem('fis_pin');
+    const db3 = getDB(); const saved = db3.prof && db3.prof.pin ? db3.prof.pin : null;
     if (pinInput === saved) {
       sblocca();
     } else {
