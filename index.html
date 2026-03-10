@@ -955,9 +955,14 @@ function generaPDF(p) {
   const clienteStr = (p.cliente && p.cliente.nome ? p.cliente.nome : 'cliente').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-]/g,'');
   const numStr = (p.numero || String(p.id)).replace(/[^a-zA-Z0-9\-]/g,'_');
   const fname = numStr + (dataStr ? '_' + dataStr : '') + (clienteStr ? '_' + clienteStr : '') + '.pdf';
-  // data URI — unico metodo garantito su Safari iOS con file://
-  const dataUri = doc.output('datauristring');
-  mostraModalPDF(fname, dataUri);
+  // Desktop → download diretto; mobile → modal con istruzioni
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (!isMobile) {
+    doc.save(fname);
+  } else {
+    const dataUri = doc.output('datauristring');
+    mostraModalPDF(fname, dataUri);
+  }
 }
 
 function mostraModalPDF(fname, dataUri) {
