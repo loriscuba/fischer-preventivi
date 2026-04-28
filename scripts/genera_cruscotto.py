@@ -14,9 +14,9 @@ COD_AGENTE = "400542"
 BASE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(BASE, "..")
 
-PATH_ROLLING = os.path.join(ROOT, "data", "rolling.xlsx")
-PATH_GAMMA   = os.path.join(ROOT, "data", "gamma.xlsx")
-PATH_OUT     = os.path.join(ROOT, "cruscotto_data.json")
+PATH_ROLLING = os.environ.get("PATH_ROLLING", os.path.join(ROOT, "data", "rolling.xlsx"))
+PATH_GAMMA   = os.environ.get("PATH_GAMMA",   os.path.join(ROOT, "data", "gamma.xlsx"))
+PATH_OUT     = os.environ.get("PATH_OUT",     os.path.join(ROOT, "cruscotto_data.json"))
 
 # ── utils ──────────────────────────────────────────────────────────────
 def clean(v):
