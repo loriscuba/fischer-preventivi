@@ -35,10 +35,10 @@ jobs:
 
       - name: Esegui script
         run: |
-          cp data-branch/data/rolling.xlsx main/data/rolling.xlsx
-          cp data-branch/data/gamma.xlsx main/data/gamma.xlsx
           cd main
-          python scripts/genera_cruscotto.py
+          python scripts/genera_cruscotto.py \
+            --rolling ../data-branch/data/rolling.xlsx \
+            --gamma   ../data-branch/data/gamma.xlsx
 
       - name: Pubblica JSON su main
         run: |
