@@ -13,11 +13,17 @@ jobs:
   genera-json:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout main (script)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+
+      - name: Checkout data (file Excel)
         uses: actions/checkout@v4
         with:
           ref: data
-          fetch-depth: 0
+          path: data-branch
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -28,16 +34,17 @@ jobs:
         run: pip install pandas openpyxl
 
       - name: Esegui script
-        run: python scripts/genera_cruscotto.py
+        run: |
+          cp data-branch/data/rolling.xlsx main/data/rolling.xlsx
+          cp data-branch/data/gamma.xlsx main/data/gamma.xlsx
+          cd main
+          python scripts/genera_cruscotto.py
 
       - name: Pubblica JSON su main
         run: |
+          cd main
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          cp cruscotto_data.json /tmp/cruscotto_data.json
-          git fetch origin main
-          git checkout main
-          cp /tmp/cruscotto_data.json cruscotto_data.json
           git add cruscotto_data.json
           git diff --cached --quiet || git commit -m "Aggiorna cruscotto_data.json [auto]"
           git push origin main
