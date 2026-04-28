@@ -1,6 +1,7 @@
 name: Aggiorna Cruscotto
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - data
