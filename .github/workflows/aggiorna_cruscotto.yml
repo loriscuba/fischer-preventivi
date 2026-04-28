@@ -34,11 +34,13 @@ jobs:
         run: pip install pandas openpyxl
 
       - name: Esegui script
+        env:
+          PATH_ROLLING: ${{ github.workspace }}/data-branch/data/rolling.xlsx
+          PATH_GAMMA: ${{ github.workspace }}/data-branch/data/gamma.xlsx
+          PATH_OUT: ${{ github.workspace }}/main/cruscotto_data.json
         run: |
           cd main
-          python scripts/genera_cruscotto.py \
-            --rolling "$GITHUB_WORKSPACE/data-branch/data/rolling.xlsx" \
-            --gamma "$GITHUB_WORKSPACE/data-branch/data/gamma.xlsx"
+          python scripts/genera_cruscotto.py
 
       - name: Pubblica JSON su main
         run: |
