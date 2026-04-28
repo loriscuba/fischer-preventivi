@@ -1,1 +1,45 @@
+name: Aggiorna Cruscotto
 
+on:
+  push:
+    branches:
+      - data
+    paths:
+      - 'data/rolling.xlsx'
+      - 'data/gamma.xlsx'
+
+jobs:
+  genera-json:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo (branch data)
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installa dipendenze
+        run: pip install pandas openpyxl
+
+      - name: Esegui script
+        run: python scripts/genera_cruscotto.py
+
+      - name: Copia JSON su branch main
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp cruscotto_data.json /tmp/cruscotto_data.json
+          git fetch origin main
+          git checkout main
+          cp /tmp/cruscotto_data.json cruscotto_data.json
+          git add cruscotto_data.json
+          git diff --cached --quiet || git commit -m "🔄 Aggiorna cruscotto_data.json [auto]"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
