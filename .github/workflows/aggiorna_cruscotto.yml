@@ -37,8 +37,8 @@ jobs:
         run: |
           cd main
           python scripts/genera_cruscotto.py \
-            --rolling ../data-branch/data/rolling.xlsx \
-            --gamma   ../data-branch/data/gamma.xlsx
+            --rolling "$GITHUB_WORKSPACE/data-branch/data/rolling.xlsx" \
+            --gamma "$GITHUB_WORKSPACE/data-branch/data/gamma.xlsx"
 
       - name: Pubblica JSON su main
         run: |
