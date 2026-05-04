@@ -280,6 +280,7 @@ html
   <div class="header-right">
     <div class="dot-live" id="dot-live" style="display:none"></div>
     <div class="header-meta" id="header-meta">Caricamento…</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted2);margin-left:12px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;" title="Versione build">v 04/05/2026 12:57</div>
   </div>
 </header>
 
@@ -628,6 +629,8 @@ html
 // ═══════════════════════════════════════════════════════
 let DATA = null;
 let clienti = [];
+// Wilson — dichiarato qui per evitare problemi di hoisting con let
+var WILSON_ORDINI = JSON.parse(localStorage.getItem('wilson_ordini') || '[]');
 let sortCol = 'fatt2024', sortDir = -1;
 let mChart = null;
 
@@ -1746,26 +1749,60 @@ loadConfig();
 caricaDati();
 </script>
 
-<!-- pdf.js per parsing PDF lato browser -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 // ═══════════════════════════════════════════ WILSON PDF ENGINE ═══════
-if (typeof pdfjsLib !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-}
 
-let WILSON_ORDINI = JSON.parse(localStorage.getItem('wilson_ordini') || '[]');
+// ── CARICAMENTO pdf.js dinamico ──────────────────────────────────────
+const PDFJS_SRC    = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let _pdfLibReady = null;
+function loadPdfLib() {
+  if (_pdfLibReady) return _pdfLibReady;
+  _pdfLibReady = new Promise((resolve, reject) => {
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+      return resolve(pdfjsLib);
+    }
+    const s = document.createElement('script');
+    s.src = PDFJS_SRC;
+    s.onload = () => {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+      resolve(pdfjsLib);
+    };
+    s.onerror = () => reject(new Error('pdf.js non caricato'));
+    document.head.appendChild(s);
+  });
+  return _pdfLibReady;
+}
 
 // ── ESTRAZIONE TESTO DA PDF ──────────────────────────────────────────
 async function pdfToText(arrayBuffer) {
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  let testo = '';
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    testo += content.items.map(it => it.str).join(' ') + '\n';
+  // Metodo 1: pdf.js (più preciso)
+  try {
+    const lib = await loadPdfLib();
+    const pdf = await lib.getDocument({ data: arrayBuffer }).promise;
+    let testo = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      testo += content.items.map(it => it.str).join(' ') + '\n';
+    }
+    if (testo.trim().length > 50) return testo;
+  } catch(e) {
+    console.warn('pdf.js fallito, uso fallback:', e.message);
   }
-  return testo;
+  // Metodo 2: lettura raw del PDF come testo (funziona per PDF non cifrati con testo embedded)
+  const bytes = new Uint8Array(arrayBuffer);
+  let raw = '';
+  for (let i = 0; i < bytes.length; i++) {
+    const c = bytes[i];
+    if (c >= 32 && c < 127) raw += String.fromCharCode(c);
+    else if (c === 10 || c === 13) raw += ' ';
+  }
+  // Estrai blocchi di testo dai stream PDF
+  const matches = raw.match(/\(([^)]{2,200})\)/g) || [];
+  return matches.map(m => m.slice(1,-1)).join(' ');
 }
 
 // ── PARSER CONFERMA D'ORDINE FISCHER ────────────────────────────────
@@ -1778,38 +1815,43 @@ function parseOrdine(testo, nomeFile) {
   const num_cliente   = find(/Numero di cliente\s+(\d+)/);
   const piva          = find(/Partita IVA\s+(IT\d+)/);
   const totStr        = find(/Totale ordine EUR\s+([\d\.,]+)/);
-  const pagamento     = find(/Condizioni Pagamento\s+(.+?)(?:\n|Spediz)/);
+  const pagamento     = find(/Condizioni Pagamento\s+(.+?)(?:Spediz|Porto)/);
   const totale        = totStr ? parseFloat(totStr.replace(/\./g,'').replace(',','.')) : 0;
 
-  // Articoli: 8 cifre → descrizione → quantità → UM → prezzo → UM → [sconti] → importo → 0
-  const reArt = /(\d{8})\s+(.+?)\s+([\d\.]+)\s+(PZ|CZ|KG)\s+([\d,]+)\s+(?:\d+\s+)?(PZ|CZ|KG)\s+([\d,\/\s\.]+?)?\s*([\d,]+)\s+0(?:\s|$)/g;
+  // ── ARTICOLI: split per codice Fischer (inizia sempre con 00) ──────
+  const blocchi = testo.split(/(?=\b00\d{6}\b)/);
+  const reArt = /^(00\d{6})\s+(.+?)\s+([\d\.]+)\s+(PZ|CZ|KG)\s+([\d,]+)\s+(?:\d+\s+)?(PZ|CZ|KG)\s+([\d,\/\s\.]+?)?\s*([\d,]+)\s+0\b/;
   const articoli = [];
-  let m;
-  while ((m = reArt.exec(testo)) !== null) {
-    const [, cod, desc, qty, um, prezzo, , sconti, importo] = m;
+
+  for (const blocco of blocchi) {
+    const m = reArt.exec(blocco.trim());
+    if (!m) continue;
+    const [, cod, desc, qty, um, prezzo,, sconti, importo] = m;
+    // Pulisce descrizione: rimuove EAN e testo magazzino
+    const descClean = desc.replace(/\d{13}/g, '').replace(/\s+/g,' ').trim().slice(0, 80);
     articoli.push({
-      cod_art:    cod,
-      descrizione: desc.trim().replace(/\s+/g,' '),
-      quantita:   parseFloat(qty.replace('.','').replace(',','.')),
+      cod_art:     cod,
+      descrizione: descClean,
+      quantita:    parseFloat(qty.replace(/\./g,'').replace(',','.')),
       um,
       prezzo_unit: parseFloat(prezzo.replace(',','.')),
-      sconti:     (sconti||'').trim(),
-      importo:    parseFloat(importo.replace('.','').replace(',','.'))
+      sconti:      (sconti||'').trim(),
+      importo:     parseFloat(importo.replace(/\./g,'').replace(',','.'))
     });
   }
 
   return {
-    id: numero_ordine || nomeFile,
+    id:           numero_ordine || nomeFile,
     numero_ordine,
     data,
-    cliente:    cliente.replace(/\s+/g,' ').trim(),
+    cliente:      cliente.replace(/\s+/g,' ').trim(),
     num_cliente,
     piva,
     totale,
-    pagamento:  pagamento.trim(),
-    n_articoli: articoli.length,
+    pagamento:    pagamento.trim(),
+    n_articoli:   articoli.length,
     articoli,
-    file:       nomeFile
+    file:         nomeFile
   };
 }
 
@@ -1817,7 +1859,10 @@ function parseOrdine(testo, nomeFile) {
 async function wilsonHandleFiles(files) {
   const status = document.getElementById('wilson-status');
   const arr = Array.from(files);
-  status.textContent = `Elaboro ${arr.length} file…`;
+  if (!arr.length) return;
+
+  status.textContent = `⏳ Carico pdf.js e elaboro ${arr.length} file…`;
+  status.style.color = 'var(--warn)';
   let ok = 0, errori = 0;
 
   for (const file of arr) {
@@ -1838,6 +1883,7 @@ async function wilsonHandleFiles(files) {
 
   localStorage.setItem('wilson_ordini', JSON.stringify(WILSON_ORDINI));
   status.textContent = `✓ ${ok} ordini caricati${errori ? ` · ${errori} errori` : ''}`;
+  status.style.color = ok > 0 ? 'var(--ok)' : 'var(--danger)';
   wilsonRender();
 }
 
@@ -1881,7 +1927,7 @@ function wilsonRender() {
         <td>${o.cliente||'—'}</td>
         <td><span style="font-family:var(--mono);font-size:11px;color:var(--muted);">${o.num_cliente||'—'}</span></td>
         <td style="text-align:right;font-family:var(--mono);font-size:12px;">${o.n_articoli}</td>
-        <td style="text-align:right;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);">€ ${fmt(o.totale)}</td>
+        <td style="text-align:right;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);">€ ${fmtEur(o.totale)}</td>
         <td style="font-family:var(--mono);font-size:10px;color:var(--muted);">${o.pagamento||'—'}</td>
       </tr>`).join('');
   }
@@ -1890,9 +1936,9 @@ function wilsonRender() {
   const totale   = lista.reduce((s,o) => s + (o.totale||0), 0);
   const artSet   = new Set(lista.flatMap(o => (o.articoli||[]).map(a => a.cod_art)));
   document.getElementById('wk-ordini').textContent  = lista.length;
-  document.getElementById('wk-totale').textContent  = '€ ' + fmt(totale);
+  document.getElementById('wk-totale').textContent  = '€ ' + fmtEur(totale);
   document.getElementById('wk-articoli').textContent = artSet.size;
-  document.getElementById('wk-media').textContent   = lista.length ? '€ ' + fmt(totale / lista.length) : '—';
+  document.getElementById('wk-media').textContent   = lista.length ? '€ ' + fmtEur(totale / lista.length) : '—';
 }
 
 function dataCmp(a, b) {
@@ -1900,7 +1946,7 @@ function dataCmp(a, b) {
   return p(a) - p(b);
 }
 
-function fmt(n) {
+function fmtEur(n) {
   return (n||0).toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2 });
 }
 
@@ -1917,9 +1963,9 @@ function wilsonDrawer(numOrdine) {
       <td>${a.descrizione}</td>
       <td style="text-align:right;font-family:var(--mono);font-size:12px;">${(a.quantita||0).toLocaleString('it-IT')}</td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${a.um}</td>
-      <td style="text-align:right;font-family:var(--mono);font-size:12px;">€ ${fmt(a.prezzo_unit)}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:12px;">€ ${fmtEur(a.prezzo_unit)}</td>
       <td style="font-family:var(--mono);font-size:10px;color:var(--muted);">${a.sconti||'—'}</td>
-      <td style="text-align:right;font-family:var(--mono);font-size:13px;font-weight:700;">€ ${fmt(a.importo)}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:13px;font-weight:700;">€ ${fmtEur(a.importo)}</td>
     </tr>`).join('');
   const drawer = document.getElementById('wilson-drawer');
   drawer.style.display = 'block';
