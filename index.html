@@ -288,6 +288,7 @@ html
   <button class="tab" onclick="showPanel('clienti',this)">Clienti</button>
   <button class="tab" onclick="showPanel('gamma',this)">Gamma Prodotti</button>
   <button class="tab" onclick="showPanel('pipeline',this)">Pipeline</button>
+  <button class="tab" onclick="showPanel('wilson',this)">Wilson Ordini</button>
   <button class="tab" onclick="showPanel('upload',this)">Aggiorna Dati</button>
 </div>
 
@@ -490,6 +491,96 @@ html
     </button>
     <div id="upload-log" style="display:none;margin-top:14px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:2;"></div>
   </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ WILSON ORDINI ══ -->
+<div class="panel" id="panel-wilson">
+<div style="max-width:1100px;margin:0 auto;">
+
+  <!-- KPI Wilson -->
+  <div class="section-title" style="margin-bottom:12px;">Riepilogo ordini Wilson</div>
+  <div class="kpi-grid" id="wilson-kpi" style="margin-bottom:24px;">
+    <div class="kpi"><div class="kpi-label">Ordini caricati</div><div class="kpi-val" id="wk-ordini">—</div></div>
+    <div class="kpi"><div class="kpi-label">Totale fatturato</div><div class="kpi-val" id="wk-totale">—</div></div>
+    <div class="kpi"><div class="kpi-label">Articoli distinti</div><div class="kpi-val" id="wk-articoli">—</div></div>
+    <div class="kpi"><div class="kpi-label">Valore medio ordine</div><div class="kpi-val" id="wk-media">—</div></div>
+  </div>
+
+  <!-- Upload PDF -->
+  <div class="section-title">Carica PDF ordini Wilson</div>
+  <div id="wilson-upload-zone"
+       style="border:2px dashed var(--border2);border-radius:10px;padding:28px;text-align:center;cursor:pointer;margin-bottom:16px;transition:border-color .2s,background .2s;"
+       onclick="document.getElementById('wilson-file-input').click()"
+       ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--accent-l)'"
+       ondragleave="this.style.borderColor='var(--border2)';this.style.background=''"
+       ondrop="wilsonDrop(event)">
+    <div style="font-size:28px;margin-bottom:8px;">📄</div>
+    <div style="font-weight:700;margin-bottom:4px;">Trascina i PDF qui</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">oppure clicca · Selezione multipla supportata</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted2);margin-top:6px;">Conferma_Ordine_*.PDF</div>
+  </div>
+  <input type="file" id="wilson-file-input" accept=".pdf,.PDF" multiple style="display:none" onchange="wilsonHandleFiles(this.files)">
+  <div id="wilson-status" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;min-height:16px;"></div>
+
+  <!-- Filtri -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+    <input id="wilson-search" class="search-box" placeholder="🔍  Cerca cliente, cod. art., descrizione…" style="flex:1;min-width:200px;" oninput="wilsonRender()">
+    <select id="wilson-sort" class="search-box" style="font-family:var(--mono);font-size:12px;" onchange="wilsonRender()">
+      <option value="data-desc">Data ↓</option>
+      <option value="data-asc">Data ↑</option>
+      <option value="totale-desc">Totale ↓</option>
+      <option value="totale-asc">Totale ↑</option>
+    </select>
+    <button onclick="wilsonExportCSV()" style="font-family:var(--mono);font-size:11px;font-weight:600;padding:8px 14px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);cursor:pointer;color:var(--text2);">⬇ CSV</button>
+    <button onclick="wilsonClear()" style="font-family:var(--mono);font-size:11px;font-weight:600;padding:8px 14px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);cursor:pointer;color:var(--danger);">✕ Svuota</button>
+  </div>
+
+  <!-- Tabella ordini -->
+  <div style="overflow-x:auto;">
+  <table id="wilson-table">
+    <thead>
+      <tr>
+        <th style="width:32px;"></th>
+        <th>N° Ordine</th>
+        <th>Data</th>
+        <th>Cliente</th>
+        <th>N° Cliente</th>
+        <th style="text-align:right;">Articoli</th>
+        <th style="text-align:right;">Totale EUR</th>
+        <th>Pagamento</th>
+      </tr>
+    </thead>
+    <tbody id="wilson-tbody">
+      <tr><td colspan="8" style="text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px;padding:40px;">Nessun PDF caricato</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- Drawer articoli -->
+  <div id="wilson-drawer" style="display:none;margin-top:16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span id="wilson-drawer-title" style="font-weight:800;font-size:14px;"></span>
+      <button onclick="document.getElementById('wilson-drawer').style.display='none'" style="font-family:var(--mono);font-size:11px;border:1px solid var(--border2);border-radius:6px;padding:4px 10px;background:var(--surface);cursor:pointer;color:var(--muted);">✕ Chiudi</button>
+    </div>
+    <div style="overflow-x:auto;">
+    <table id="wilson-art-table">
+      <thead>
+        <tr>
+          <th>Cod. Art.</th>
+          <th>Descrizione</th>
+          <th style="text-align:right;">Qtà</th>
+          <th>UM</th>
+          <th style="text-align:right;">Prezzo unit.</th>
+          <th>Sconti %</th>
+          <th style="text-align:right;">Importo EUR</th>
+        </tr>
+      </thead>
+      <tbody id="wilson-art-tbody"></tbody>
+    </table>
+    </div>
+  </div>
+
+</div>
 </div>
 
 </main>
@@ -1653,6 +1744,217 @@ async function pubblicaSuGitHub() {
 // ═══════════════════════════════════════════════════════
 loadConfig();
 caricaDati();
+</script>
+
+<!-- pdf.js per parsing PDF lato browser -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+// ═══════════════════════════════════════════ WILSON PDF ENGINE ═══════
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+let WILSON_ORDINI = JSON.parse(localStorage.getItem('wilson_ordini') || '[]');
+
+// ── ESTRAZIONE TESTO DA PDF ──────────────────────────────────────────
+async function pdfToText(arrayBuffer) {
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let testo = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    testo += content.items.map(it => it.str).join(' ') + '\n';
+  }
+  return testo;
+}
+
+// ── PARSER CONFERMA D'ORDINE FISCHER ────────────────────────────────
+function parseOrdine(testo, nomeFile) {
+  const find = (re) => { const m = testo.match(re); return m ? m[1].trim() : ''; };
+
+  const numero_ordine = find(/Numero d.ordine\s+(\d+)/);
+  const data          = find(/Data\s+(\d{2}\.\d{2}\.\d{4})/);
+  const cliente       = find(/SPETT\.LE\s+(.+?)(?:\s{2,}|Via |P\.za )/);
+  const num_cliente   = find(/Numero di cliente\s+(\d+)/);
+  const piva          = find(/Partita IVA\s+(IT\d+)/);
+  const totStr        = find(/Totale ordine EUR\s+([\d\.,]+)/);
+  const pagamento     = find(/Condizioni Pagamento\s+(.+?)(?:\n|Spediz)/);
+  const totale        = totStr ? parseFloat(totStr.replace(/\./g,'').replace(',','.')) : 0;
+
+  // Articoli: 8 cifre → descrizione → quantità → UM → prezzo → UM → [sconti] → importo → 0
+  const reArt = /(\d{8})\s+(.+?)\s+([\d\.]+)\s+(PZ|CZ|KG)\s+([\d,]+)\s+(?:\d+\s+)?(PZ|CZ|KG)\s+([\d,\/\s\.]+?)?\s*([\d,]+)\s+0(?:\s|$)/g;
+  const articoli = [];
+  let m;
+  while ((m = reArt.exec(testo)) !== null) {
+    const [, cod, desc, qty, um, prezzo, , sconti, importo] = m;
+    articoli.push({
+      cod_art:    cod,
+      descrizione: desc.trim().replace(/\s+/g,' '),
+      quantita:   parseFloat(qty.replace('.','').replace(',','.')),
+      um,
+      prezzo_unit: parseFloat(prezzo.replace(',','.')),
+      sconti:     (sconti||'').trim(),
+      importo:    parseFloat(importo.replace('.','').replace(',','.'))
+    });
+  }
+
+  return {
+    id: numero_ordine || nomeFile,
+    numero_ordine,
+    data,
+    cliente:    cliente.replace(/\s+/g,' ').trim(),
+    num_cliente,
+    piva,
+    totale,
+    pagamento:  pagamento.trim(),
+    n_articoli: articoli.length,
+    articoli,
+    file:       nomeFile
+  };
+}
+
+// ── GESTIONE FILE ────────────────────────────────────────────────────
+async function wilsonHandleFiles(files) {
+  const status = document.getElementById('wilson-status');
+  const arr = Array.from(files);
+  status.textContent = `Elaboro ${arr.length} file…`;
+  let ok = 0, errori = 0;
+
+  for (const file of arr) {
+    try {
+      const buf = await file.arrayBuffer();
+      const testo = await pdfToText(buf);
+      const ordine = parseOrdine(testo, file.name);
+      // Sostituisce se stesso esiste già
+      const idx = WILSON_ORDINI.findIndex(o => o.numero_ordine && o.numero_ordine === ordine.numero_ordine);
+      if (idx >= 0) WILSON_ORDINI[idx] = ordine;
+      else WILSON_ORDINI.push(ordine);
+      ok++;
+    } catch(e) {
+      console.error(file.name, e);
+      errori++;
+    }
+  }
+
+  localStorage.setItem('wilson_ordini', JSON.stringify(WILSON_ORDINI));
+  status.textContent = `✓ ${ok} ordini caricati${errori ? ` · ${errori} errori` : ''}`;
+  wilsonRender();
+}
+
+function wilsonDrop(e) {
+  e.preventDefault();
+  document.getElementById('wilson-upload-zone').style.borderColor = 'var(--border2)';
+  document.getElementById('wilson-upload-zone').style.background = '';
+  wilsonHandleFiles(e.dataTransfer.files);
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────
+function wilsonRender() {
+  const q      = (document.getElementById('wilson-search')?.value || '').toLowerCase();
+  const sort   = document.getElementById('wilson-sort')?.value || 'data-desc';
+  const tbody  = document.getElementById('wilson-tbody');
+  if (!tbody) return;
+
+  let lista = WILSON_ORDINI.filter(o => {
+    if (!q) return true;
+    return (o.numero_ordine||'').includes(q) ||
+           (o.cliente||'').toLowerCase().includes(q) ||
+           (o.articoli||[]).some(a =>
+             a.cod_art.includes(q) || a.descrizione.toLowerCase().includes(q));
+  });
+
+  lista.sort((a,b) => {
+    if (sort === 'data-desc') return dataCmp(b.data, a.data);
+    if (sort === 'data-asc')  return dataCmp(a.data, b.data);
+    if (sort === 'totale-desc') return b.totale - a.totale;
+    return a.totale - b.totale;
+  });
+
+  if (lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px;padding:40px;">${WILSON_ORDINI.length ? 'Nessun risultato' : 'Nessun PDF caricato'}</td></tr>`;
+  } else {
+    tbody.innerHTML = lista.map(o => `
+      <tr style="cursor:pointer;" onclick="wilsonDrawer('${o.numero_ordine}')">
+        <td style="text-align:center;color:var(--muted);font-size:16px;" title="Vedi articoli">▶</td>
+        <td><span style="font-family:var(--mono);font-size:12px;font-weight:700;">${o.numero_ordine||'—'}</span></td>
+        <td><span style="font-family:var(--mono);font-size:12px;">${o.data||'—'}</span></td>
+        <td>${o.cliente||'—'}</td>
+        <td><span style="font-family:var(--mono);font-size:11px;color:var(--muted);">${o.num_cliente||'—'}</span></td>
+        <td style="text-align:right;font-family:var(--mono);font-size:12px;">${o.n_articoli}</td>
+        <td style="text-align:right;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent);">€ ${fmt(o.totale)}</td>
+        <td style="font-family:var(--mono);font-size:10px;color:var(--muted);">${o.pagamento||'—'}</td>
+      </tr>`).join('');
+  }
+
+  // KPI
+  const totale   = lista.reduce((s,o) => s + (o.totale||0), 0);
+  const artSet   = new Set(lista.flatMap(o => (o.articoli||[]).map(a => a.cod_art)));
+  document.getElementById('wk-ordini').textContent  = lista.length;
+  document.getElementById('wk-totale').textContent  = '€ ' + fmt(totale);
+  document.getElementById('wk-articoli').textContent = artSet.size;
+  document.getElementById('wk-media').textContent   = lista.length ? '€ ' + fmt(totale / lista.length) : '—';
+}
+
+function dataCmp(a, b) {
+  const p = s => { if(!s) return 0; const [d,m,y] = s.split('.'); return +y*10000 + +m*100 + +d; };
+  return p(a) - p(b);
+}
+
+function fmt(n) {
+  return (n||0).toLocaleString('it-IT', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+// ── DRAWER ARTICOLI ──────────────────────────────────────────────────
+function wilsonDrawer(numOrdine) {
+  const ordine = WILSON_ORDINI.find(o => o.numero_ordine === numOrdine);
+  if (!ordine) return;
+  document.getElementById('wilson-drawer-title').textContent =
+    `Ordine ${ordine.numero_ordine} · ${ordine.cliente} · ${ordine.data}`;
+  const tbody = document.getElementById('wilson-art-tbody');
+  tbody.innerHTML = (ordine.articoli||[]).map(a => `
+    <tr>
+      <td><span style="font-family:var(--mono);font-size:11px;">${a.cod_art}</span></td>
+      <td>${a.descrizione}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:12px;">${(a.quantita||0).toLocaleString('it-IT')}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted);">${a.um}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:12px;">€ ${fmt(a.prezzo_unit)}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--muted);">${a.sconti||'—'}</td>
+      <td style="text-align:right;font-family:var(--mono);font-size:13px;font-weight:700;">€ ${fmt(a.importo)}</td>
+    </tr>`).join('');
+  const drawer = document.getElementById('wilson-drawer');
+  drawer.style.display = 'block';
+  drawer.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+// ── EXPORT CSV ───────────────────────────────────────────────────────
+function wilsonExportCSV() {
+  if (!WILSON_ORDINI.length) return;
+  const rows = [['N° Ordine','Data','Cliente','N° Cliente','Cod. Art.','Descrizione','Qtà','UM','Prezzo unit.','Sconti %','Importo EUR','Totale Ordine','Pagamento']];
+  WILSON_ORDINI.forEach(o => {
+    (o.articoli||[]).forEach(a => {
+      rows.push([o.numero_ordine, o.data, o.cliente, o.num_cliente,
+                 a.cod_art, a.descrizione, a.quantita, a.um,
+                 a.prezzo_unit, a.sconti, a.importo, o.totale, o.pagamento]);
+    });
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `wilson_ordini_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+function wilsonClear() {
+  if (!confirm('Eliminare tutti gli ordini Wilson caricati?')) return;
+  WILSON_ORDINI = [];
+  localStorage.removeItem('wilson_ordini');
+  document.getElementById('wilson-status').textContent = '';
+  wilsonRender();
+}
+
+// Init al caricamento
+wilsonRender();
 </script>
 </body>
 </html>
