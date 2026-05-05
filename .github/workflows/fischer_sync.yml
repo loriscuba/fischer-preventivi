@@ -1,0 +1,30 @@
+name: Fischer Ordini → Supabase
+
+on:
+  repository_dispatch:
+    types: [nuovo-file-onedrive]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Installa dipendenze
+        run: pip install requests pdfplumber
+
+      - name: Estrai e sincronizza
+        env:
+          SUPABASE_URL:  ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY:  ${{ secrets.SUPABASE_KEY }}
+          EVENT_PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: python estrai_ordine.py
