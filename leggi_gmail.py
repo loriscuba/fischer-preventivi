@@ -65,7 +65,6 @@ def estrai_testo(pdf_bytes: bytes) -> str:
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         return "\n".join(page.extract_text() or "" for page in pdf.pages)
 
-
 # ── Parsing ordine ─────────────────────────────────────────────────────────────
 def cerca(pattern, testo, default=""):
     m = re.search(pattern, testo)
@@ -167,6 +166,9 @@ def main():
         print(f"\n📄 Elaborazione: {nome_file}")
 
         testo = estrai_testo(pdf_bytes)
+        print("=== TESTO ESTRATTO ===")
+print(testo[:3000])
+print("=== FINE TESTO ===")
         ordine = parse_ordine(testo)
         numero_ordine = ordine.get("numero_ordine")
 
