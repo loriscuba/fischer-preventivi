@@ -167,8 +167,8 @@ def main():
 
         testo = estrai_testo(pdf_bytes)
         print("=== TESTO ESTRATTO ===")
-print(testo[:3000])
-print("=== FINE TESTO ===")
+        print(testo[:3000])
+        print("=== FINE TESTO ===")
         ordine = parse_ordine(testo)
         numero_ordine = ordine.get("numero_ordine")
 
