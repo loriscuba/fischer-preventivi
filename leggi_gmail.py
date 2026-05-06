@@ -97,9 +97,10 @@ def parse_righe(testo, numero_ordine):
         r"(\d{8})\s+"
         r"(.+?)\s+"
         r"(\d+)\s+"
-        r"(PZ|KG|MT|CF)\s+"
+        r"(PZ|KG|MT|CF|ST)\s+"
         r"([\d,\.]+)\s+"
         r"\d+\s+"
+        r"(PZ|KG|MT|CF|ST)\s+"
         r"(?:([\d,\.]+)(?:\/\s*([\d,\.]+))?\s+)?"
         r"([\d,\.]+)\s+"
         r"(\d+)",
@@ -115,9 +116,9 @@ def parse_righe(testo, numero_ordine):
             "quantita":        int(m.group(3)),
             "um":              m.group(4),
             "prezzo_unitario": converti_numero(m.group(5)),
-            "sconto_1":        converti_numero(m.group(6)) if m.group(6) else None,
-            "sconto_2":        converti_numero(m.group(7)) if m.group(7) else None,
-            "importo":         converti_numero(m.group(8)),
+            "sconto_1":        converti_numero(m.group(7)) if m.group(7) else None,
+            "sconto_2":        converti_numero(m.group(8)) if m.group(8) else None,
+            "importo":         converti_numero(m.group(9)),
             "data_consegna":   data_consegna,
         })
     return righe
@@ -149,9 +150,6 @@ def main():
     for nome_file, pdf_bytes in allegati:
         print(f"\nElaborazione: {nome_file}")
         testo = estrai_testo(pdf_bytes)
-        print("=== TESTO ESTRATTO ===")
-        print(testo[:3000])
-        print("=== FINE TESTO ===")
         ordine = parse_ordine(testo)
         numero_ordine = ordine.get("numero_ordine")
 
