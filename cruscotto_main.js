@@ -400,6 +400,7 @@ function showPanel(id, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('panel-' + id).classList.add('active');
   if (el) el.classList.add('active');
+  if (id === 'clienti') renderClientiTab();
   if (id === 'gamma' && DATA) renderGamma();
   if (id === 'pipeline') renderPipeline();
   if (id === 'wilson') wilsonCaricaDaSupabase();
@@ -705,8 +706,59 @@ function mostraErrore(msg) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  OVERVIEW
+//  CLIENTI TAB (nuovo layout)
 // ═══════════════════════════════════════════════════════
+function renderClientiTab() {
+  if (!clienti || clienti.length === 0) return;
+  
+  // Leggi i filtri
+  const searchInput = document.getElementById('search-clienti');
+  const sortSelect = document.getElementById('sort-clienti');
+  
+  let q = searchInput ? searchInput.value.toLowerCase() : '';
+  let sortType = sortSelect ? sortSelect.value : 'nome';
+  
+  // Filtra
+  let rows = clienti.filter(c => {
+    if (q && !c.nome.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  
+  // Ordina
+  if (sortType === 'nome') {
+    rows.sort((a, b) => a.nome.localeCompare(b.nome));
+  } else if (sortType === 'fatturato') {
+    rows.sort((a, b) => (b.fatt2025 || 0) - (a.fatt2025 || 0));
+  } else if (sortType === 'data') {
+    rows.sort((a, b) => (b.prog2026 || 0) - (a.prog2026 || 0));
+  }
+  
+  // Renderizza tabella
+  const tbody = document.getElementById('clienti-tbody');
+  tbody.innerHTML = rows.map(c => {
+    const fatt2025 = c.fatt2025 || 0;
+    const prog2026 = c.prog2026 || 0;
+    const ultimaVisita = c.mese_corrente ? 'Questo mese' : '—';
+    
+    return `<tr onclick="openModal('${c.cod.replace(/'/g,"\\'")}')">
+      <td class="td-nome">${c.nome}<small>Cod. ${c.cod}</small></td>
+      <td>${c.div || '—'}</td>
+      <td>${c.gav || '—'}</td>
+      <td style="text-align:right;">${fmt(fatt2025)}</td>
+      <td style="text-align:right;">${fmt(prog2026)}</td>
+      <td>${ultimaVisita}</td>
+    </tr>`;
+  }).join('');
+  
+  // Event listener per search e sort
+  if (searchInput) {
+    searchInput.oninput = () => renderClientiTab();
+  }
+  if (sortSelect) {
+    sortSelect.onchange = () => renderClientiTab();
+  }
+}
+
 function buildOverview() {
   if (!DATA || !clienti.length) return;
   const tot_prev = clienti.reduce((s,c) => s + c._prev, 0);
