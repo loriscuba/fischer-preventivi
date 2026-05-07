@@ -32,6 +32,40 @@ function getPrevMonthName() {
   return mesi[getPrevMonth()];
 }
 
+// Funzione per ottenere il progressivo fino al mese precedente
+// Struttura: cliente.mesi2025 = { Gen25: 100, Feb25: 200, ... }
+//            cliente.mesi2026 = { Gen26: 50, Feb26: 150, ... }
+function getProgressivoUntilPrevMonth(cliente, anno) {
+  const prevMese = getPrevMonth(); // 0-11
+  const MESI_LABELS = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  const annoSuffix = anno === 2025 ? '25' : '26'; // '25' o '26'
+  const mesiObj = anno === 2025 ? (cliente.mesi2025 || {}) : (cliente.mesi2026 || {});
+  
+  let sum = 0;
+  
+  // Somma da mese 0 (Gen) fino al mese precedente
+  for (let m = 0; m <= prevMese; m++) {
+    const meseKey = MESI_LABELS[m] + annoSuffix; // 'Gen25', 'Feb25', ..., 'Apr25', etc.
+    const val = mesiObj[meseKey];
+    if (val !== undefined && val !== null) {
+      sum += (val || 0);
+    }
+  }
+  
+  // Se abbiamo trovato dati, ritorna la somma
+  if (sum > 0) return sum;
+  
+  // Fallback: usa il totale annuale se non abbiamo i dati mensili
+  if (anno === 2025) {
+    return cliente.fatt2025 || cliente._prev || 0;
+  }
+  if (anno === 2026) {
+    return cliente.prog2026 || cliente._prog || 0;
+  }
+  
+  return 0;
+}
+
 function renderOverview() {
   if (!DATA || !clienti || clienti.length === 0) return;
 
@@ -116,13 +150,19 @@ function renderTopClienti(tipo = 'top10') {
   if (!clienti || clienti.length === 0) return;
   
   const prevMese = getPrevMonth(); // 0-11
-  const meseKey = `m${prevMese + 1}`; // m1, m2, ..., m12
+  const MESI_LABELS = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  const meseLabelPrev = MESI_LABELS[prevMese]; // 'Gen', 'Feb', 'Apr', etc.
   
   // Calcola i dati per il mese precedente per entrambi gli anni
   const clientiData = clienti.map(c => {
-    const val2025 = c[`${meseKey}_2025`] || 0;
-    const val2026 = c[`${meseKey}_2026`] || 0;
+    const mesi2025 = c.mesi2025 || {};
+    const mesi2026 = c.mesi2026 || {};
+    
+    const val2025 = mesi2025[meseLabelPrev + '25'] || 0;
+    const val2026 = mesi2026[meseLabelPrev + '26'] || 0;
+    
     const delta = val2025 === 0 ? 0 : Math.round(((val2026 - val2025) / val2025) * 100);
+    
     return {
       nome: c.nome || 'N/A',
       val2025,
@@ -164,16 +204,21 @@ function renderCharts() {
   const progressivoData2025 = [];
   const progressivoData2026 = [];
   
+  const MESI_LABELS = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  
   let cumul2025 = 0, cumul2026 = 0;
   
-  for (let m = 1; m <= 12; m++) {
-    const key2025 = `m${m}_2025`;
-    const key2026 = `m${m}_2026`;
+  for (let m = 0; m < 12; m++) {
+    const meseLbl = MESI_LABELS[m];
+    const key2025 = meseLbl + '25'; // 'Gen25', 'Feb25', etc.
+    const key2026 = meseLbl + '26'; // 'Gen26', 'Feb26', etc.
     
     let mese2025 = 0, mese2026 = 0;
     clienti.forEach(c => {
-      mese2025 += (c[key2025] || 0);
-      mese2026 += (c[key2026] || 0);
+      const mesi2025 = c.mesi2025 || {};
+      const mesi2026 = c.mesi2026 || {};
+      mese2025 += (mesi2025[key2025] || 0);
+      mese2026 += (mesi2026[key2026] || 0);
     });
     
     andamentoData2025.push(mese2025);
