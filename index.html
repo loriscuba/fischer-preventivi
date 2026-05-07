@@ -467,6 +467,12 @@ function switchPanel(panelName){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('panel-'+panelName).classList.add('active');
   event.target.classList.add('active');
+  
+  // Carica i dati per il panel selezionato
+  if (panelName === 'clienti') renderClientiTab();
+  if (panelName === 'gamma' && DATA) renderGamma();
+  if (panelName === 'pipeline') renderPipeline();
+  if (panelName === 'wilson') wilsonCaricaDaSupabase();
 }
 
 function switchClientTab(tabName){
