@@ -5,371 +5,433 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cruscotto · Fischer Italia · Cubaiu</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
-    --bg:#f0f2f5;--surface:#ffffff;--surface2:#f7f8fa;--border:#e2e6ea;--border2:#d0d5dd;
-    --accent:#1a6cff;--accent-l:#e8f0ff;--ok:#0d9e6e;--ok-l:#e6f7f2;
-    --warn:#d97706;--warn-l:#fff8e6;--danger:#dc2626;--danger-l:#fff0f0;
-    --text:#111827;--text2:#374151;--muted:#6b7280;--muted2:#9ca3af;
-    --mono:'DM Mono',monospace;--sans:'Syne',sans-serif;
-    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
-    --shadow-md:0 4px 12px rgba(0,0,0,.10);
+    --bg:#fafbfc;--surface:#ffffff;--surface-alt:#f6f8fa;--border:#d0d7de;--border-subtle:#eaeef2;
+    --accent:#0969da;--accent-l:#ddf4ff;--ok:#1a7f37;--ok-l:#dafbe1;
+    --warn:#d97706;--warn-l:#fff8e6;--danger:#da3633;--danger-l:#ffebe6;
+    --text:#0d1117;--text-secondary:#57606a;--text-muted:#6e7681;
+    --mono:'DM Mono',monospace;--sans:'Inter',sans-serif;
+    --shadow:0 1px 2px rgba(13,17,23,.06),0 1px 1px rgba(13,17,23,.07);
+    --shadow-md:0 4px 12px rgba(13,17,23,.1);
+    --shadow-lg:0 8px 24px rgba(13,17,23,.12);
   }
   *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
   body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
-  header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);}
-  .logo{font-size:13px;font-weight:800;letter-spacing:.12em;color:var(--text);text-transform:uppercase;}
+  header{background:var(--surface);border-bottom:1px solid var(--border-subtle);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);}
+  .logo{font-size:13px;font-weight:800;letter-spacing:.1em;color:var(--text);text-transform:uppercase;}
   .logo em{color:var(--accent);font-style:normal;}
-  .header-right{display:flex;align-items:center;gap:16px;}
-  .header-meta{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;line-height:1.6;}
-  .dot-live{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px var(--ok-l);flex-shrink:0;}
-  .tabs-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;gap:0;}
-  .tab{font-family:var(--mono);font-size:11px;font-weight:500;padding:14px 20px;border:none;border-bottom:2px solid transparent;cursor:pointer;color:var(--muted);background:transparent;transition:all .15s;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
-  .tab:hover{color:var(--text2);}
+  .header-right{display:flex;align-items:center;gap:20px;}
+  .header-meta{font-family:var(--mono);font-size:11px;color:var(--text-muted);text-align:right;line-height:1.5;}
+  .dot-live{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 2px var(--ok-l);flex-shrink:0;}
+  
+  .tabs-bar{background:var(--surface);border-bottom:1px solid var(--border-subtle);padding:0 32px;display:flex;gap:0;}
+  .tab{font-family:var(--mono);font-size:11px;font-weight:500;padding:14px 16px;border:none;border-bottom:2px solid transparent;cursor:pointer;color:var(--text-muted);background:transparent;transition:all .15s ease;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;}
+  .tab:hover{color:var(--text-secondary);}
   .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
-  main{padding:24px 28px;}
+  
+  main{padding:32px;max-width:1400px;margin:0 auto;}
   .panel{display:none;}
   .panel.active{display:block;}
+  
+  /* Loader */
   .loader-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;gap:14px;}
-  .loader-spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+  .loader-spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
-  .loader-text{font-family:var(--mono);font-size:12px;color:var(--muted);}
-  .error-banner{background:var(--danger-l);border:1px solid #fca5a5;border-radius:8px;padding:14px 18px;font-family:var(--mono);font-size:12px;color:var(--danger);margin-bottom:20px;}
-  .section-title{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
-  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:24px;}
-  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;box-shadow:var(--shadow);}
-  .kpi-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;}
-  .kpi-val{font-size:22px;font-weight:800;line-height:1;color:var(--text);}
-  .kpi-sub{font-family:var(--mono);font-size:10px;color:var(--muted2);margin-top:5px;}
-  .kpi-delta{font-family:var(--mono);font-size:11px;font-weight:500;margin-top:4px;display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;}
+  .loader-text{font-family:var(--mono);font-size:12px;color:var(--text-muted);}
+  .error-banner{background:var(--danger-l);border:1px solid #ffcccc;border-radius:8px;padding:14px 16px;font-family:var(--mono);font-size:12px;color:var(--danger);margin-bottom:20px;}
+  
+  /* Section */
+  .section-title{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border-subtle);}
+  
+  /* KPI Grid - compatte */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:28px;}
+  .kpi{background:var(--surface);border:1px solid var(--border-subtle);border-radius:10px;padding:16px;box-shadow:var(--shadow);}
+  .kpi-label{font-family:var(--mono);font-size:10px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;font-weight:500;}
+  .kpi-val{font-size:20px;font-weight:700;line-height:1.2;color:var(--text);}
+  .kpi-sub{font-family:var(--mono);font-size:10px;color:var(--text-muted);margin-top:4px;}
+  .kpi-delta{font-family:var(--mono);font-size:11px;font-weight:500;margin-top:6px;display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;}
   .kpi-delta.pos{color:var(--ok);background:var(--ok-l);}
   .kpi-delta.neg{color:var(--danger);background:var(--danger-l);}
-  .kpi-delta.neu{color:var(--muted);background:var(--surface2);}
-  .mese-compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:24px;}
-  .mese-compare-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow);}
-  .mese-card-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;}
-  .mese-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
-  .mese-year{font-family:var(--mono);font-size:10px;color:var(--muted2);}
-  .mese-val{font-family:var(--mono);font-size:14px;font-weight:700;}
-  .mese-divider{border:none;border-top:1px dashed var(--border);margin:8px 0;}
+  .kpi-delta.neu{color:var(--text-muted);background:var(--surface-alt);}
+  
+  /* Mese Compare - semplificato */
+  .mese-compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:28px;}
+  .mese-compare-card{background:var(--surface);border:1px solid var(--border-subtle);border-radius:10px;padding:16px;box-shadow:var(--shadow);}
+  .mese-card-label{font-family:var(--mono);font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;font-weight:500;}
+  .mese-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .mese-year{font-family:var(--mono);font-size:11px;color:var(--text-muted);}
+  .mese-val{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text);}
+  .mese-divider{border:none;border-top:1px solid var(--border-subtle);margin:10px 0;}
   .mese-diff{display:flex;justify-content:space-between;align-items:center;}
-  .mese-diff-label{font-family:var(--mono);font-size:10px;color:var(--muted);}
-  .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
-  .chart-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;box-shadow:var(--shadow);}
+  .mese-diff-label{font-family:var(--mono);font-size:10px;color:var(--text-muted);}
+  
+  /* Charts */
+  .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+  .charts-row.full{grid-template-columns:1fr;}
+  .chart-box{background:var(--surface);border:1px solid var(--border-subtle);border-radius:10px;padding:20px;box-shadow:var(--shadow);}
   .chart-box.full{grid-column:1/-1;}
-  .chart-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px;}
-  .chart-wrap{position:relative;height:210px;}
-  .chart-wrap.tall{height:280px;}
-  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
-  .search-box{flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border2);border-radius:7px;padding:8px 13px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;box-shadow:var(--shadow);}
+  .chart-title{font-family:var(--mono);font-size:11px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:16px;font-weight:500;}
+  .chart-wrap{position:relative;height:240px;}
+  .chart-wrap.tall{height:300px;}
+  
+  /* Toolbar */
+  .toolbar{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+  .search-box{flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;box-shadow:var(--shadow);}
   .search-box:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-l);}
-  .filter-sel{background:var(--surface);border:1px solid var(--border2);border-radius:7px;padding:8px 13px;color:var(--text);font-family:var(--mono);font-size:11px;outline:none;cursor:pointer;box-shadow:var(--shadow);}
-  .tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);box-shadow:var(--shadow);}
-  table{width:100%;border-collapse:collapse;font-size:13px;}
-  thead th{background:var(--surface2);padding:11px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;cursor:pointer;white-space:nowrap;user-select:none;border-bottom:1px solid var(--border);}
+  .filter-sel{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:var(--text);font-family:var(--mono);font-size:11px;outline:none;cursor:pointer;box-shadow:var(--shadow);}
+  .filter-sel:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-l);}
+  
+  /* Tabs for Top Clienti */
+  .client-tabs{display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border-subtle);}
+  .client-tab{font-family:var(--mono);font-size:12px;font-weight:500;padding:10px 14px;border:none;border-bottom:2px solid transparent;cursor:pointer;color:var(--text-muted);background:transparent;transition:all .15s;}
+  .client-tab:hover{color:var(--text-secondary);}
+  .client-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  
+  /* Table */
+  .tbl-wrap{border-radius:10px;border:1px solid var(--border-subtle);box-shadow:var(--shadow);overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:var(--surface);}
+  thead th{background:var(--surface-alt);padding:12px 14px;text-align:left;font-family:var(--mono);font-size:11px;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;cursor:pointer;white-space:nowrap;user-select:none;border-bottom:1px solid var(--border-subtle);font-weight:600;}
   thead th:hover{color:var(--accent);}
   thead th.sort-asc::after{content:' ↑';color:var(--accent);}
   thead th.sort-desc::after{content:' ↓';color:var(--accent);}
-  tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
+  tbody tr{border-bottom:1px solid var(--border-subtle);transition:background .1s;}
   tbody tr:last-child{border-bottom:none;}
-  tbody tr:hover{background:var(--surface2);cursor:pointer;}
-  tbody td{padding:10px 14px;font-family:var(--mono);font-size:12px;white-space:nowrap;}
+  tbody tr:hover{background:var(--surface-alt);cursor:pointer;}
+  tbody td{padding:11px 14px;font-family:var(--mono);font-size:12px;white-space:nowrap;}
   .td-nome{font-family:var(--sans);font-size:13px;font-weight:600;white-space:normal;max-width:220px;color:var(--text);}
-  .td-nome small{display:block;font-family:var(--mono);font-size:10px;font-weight:400;color:var(--muted2);margin-top:1px;}
-  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-family:var(--mono);letter-spacing:.04em;font-weight:500;}
-  .badge-edile{background:#e6f4ee;color:#0d6e42;}
-  .badge-elettrico{background:#e8f0ff;color:#1a4fbf;}
-  .badge-its{background:#f3e8ff;color:#6b21a8;}
-  .badge-ferr{background:#fff8e6;color:#92400e;}
-  .badge-diy{background:#fff0f0;color:#991b1b;}
-  .badge-default{background:var(--surface2);color:var(--muted);}
-  .pill{display:inline-flex;align-items:center;gap:2px;padding:2px 7px;border-radius:20px;font-family:var(--mono);font-size:11px;}
+  .td-nome small{display:block;font-family:var(--mono);font-size:10px;font-weight:400;color:var(--text-muted);margin-top:2px;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:16px;font-size:10px;font-family:var(--mono);letter-spacing:.04em;font-weight:500;}
+  .badge-edile{background:#dafbe1;color:#1a7f37;}
+  .badge-elettrico{background:#ddf4ff;color:#0969da;}
+  .badge-its{background:#f5e6ff;color:#6e40aa;}
+  .badge-ferr{background:#ffd89b;color:#9e6a03;}
+  .badge-diy{background:#ffebe6;color:#da3633;}
+  .badge-default{background:var(--surface-alt);color:var(--text-muted);}
+  .pill{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:16px;font-family:var(--mono);font-size:11px;font-weight:500;}
   .pill.pos{color:var(--ok);background:var(--ok-l);}
   .pill.neg{color:var(--danger);background:var(--danger-l);}
-  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(17,24,39,.5);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
+  
+  /* Modal */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(13,17,23,.6);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
   .modal-overlay.open{display:flex;}
-  .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(960px,95vw);max-height:90vh;overflow-y:auto;padding:28px 32px;box-shadow:var(--shadow-md);}
-  .modal-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;}
-  .modal-title{font-size:18px;font-weight:800;color:var(--text);}
-  .modal-sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;}
-  .close-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:5px 11px;cursor:pointer;font-size:18px;line-height:1;}
-  .close-btn:hover{background:var(--border);color:var(--text);}
-  .modal-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
-  .modal-section-title{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
-  .compare-block{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px;}
-  .compare-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
-  .compare-card-title{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
-  .compare-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;}
-  .compare-year{font-family:var(--mono);font-size:10px;color:var(--muted2);}
-  .compare-val{font-family:var(--mono);font-size:13px;font-weight:600;}
-  .compare-diff{margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);display:flex;align-items:center;justify-content:space-between;}
-  .compare-diff-label{font-family:var(--mono);font-size:10px;color:var(--muted);}
-  .modal-chart-wrap{position:relative;height:200px;margin-bottom:20px;}
-  .gamma-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
-  .gamma-tab-btn{font-family:var(--mono);font-size:10px;padding:4px 10px;border:1px solid var(--border2);border-radius:20px;cursor:pointer;color:var(--muted);background:var(--surface2);transition:all .12s;}
-  .gamma-tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .gamma-settore-panel{display:none;}
-  .gamma-settore-panel.active{display:block;}
-  .gamma-header-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;margin-bottom:10px;}
-  .gamma-pct-pills{display:flex;gap:6px;}
-  .pct-pill{font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:20px;}
-  .pct-pill.imm{background:var(--ok-l);color:var(--ok);}
-  .pct-pill.str{background:var(--warn-l);color:var(--warn);}
-  .prod-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px;}
-  .prod-item{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:var(--mono);font-size:11px;}
-  .prod-item.has-value{border-left:3px solid var(--ok);}
-  .prod-item.missing{border-left:3px solid var(--border2);opacity:.7;}
-  .prod-name{color:var(--text2);flex:1;}
-  .prod-flag{font-size:9px;padding:1px 5px;border-radius:10px;margin-left:6px;flex-shrink:0;}
-  .prod-flag.imm{background:var(--ok-l);color:var(--ok);}
-  .prod-flag.str{background:var(--warn-l);color:var(--warn);}
-  .prod-val{font-weight:600;color:var(--text);flex-shrink:0;margin-left:10px;}
-  .prod-val.zero{color:var(--muted2);}
-  .gamma-overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;}
-  .gamma-sector-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;box-shadow:var(--shadow);}
-  .gs-title{font-weight:700;font-size:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
-  .gs-badge{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:20px;background:var(--accent-l);color:var(--accent);}
-  .gs-stat{display:flex;justify-content:space-between;margin-bottom:8px;align-items:center;}
-  .gs-stat-label{font-family:var(--mono);font-size:10px;color:var(--muted);}
-  .gauge-bar{height:5px;background:var(--border);border-radius:3px;margin:3px 0 8px;overflow:hidden;}
-  .gauge-fill{height:100%;border-radius:3px;transition:width .5s ease;}
-  .gs-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border);}
-  .gs-row:last-child{border-bottom:none;margin-bottom:0;}
-  .gs-name{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px;}
-  .gs-pct{font-family:var(--mono);font-size:11px;color:var(--muted);}
-  .upload-zone{border:2px dashed var(--border2);border-radius:10px;padding:32px;text-align:center;cursor:pointer;transition:all .15s;background:var(--surface);}
-  .upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--accent-l);}
-  .upload-icon{font-size:32px;margin-bottom:10px;}
-  .upload-note{font-family:var(--mono);font-size:11px;color:var(--muted);}
-  .upload-pattern{font-family:var(--mono);font-size:10px;color:var(--muted2);margin-top:4px;}
-  @media(max-width:640px){
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:min(960px,95vw);max-height:90vh;overflow-y:auto;padding:32px;box-shadow:var(--shadow-lg);}
+  .modal-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;}
+  .modal-title{font-size:18px;font-weight:700;color:var(--text);}
+  .modal-sub{font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:4px;}
+  .close-btn{background:var(--surface-alt);border:1px solid var(--border-subtle);color:var(--text-muted);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:18px;line-height:1;transition:all .15s;}
+  .close-btn:hover{background:var(--border-subtle);color:var(--text);}
+  .modal-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
+  .modal-section-title{font-family:var(--mono);font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border-subtle);font-weight:500;}
+  .compare-block{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;}
+  .compare-card{background:var(--surface-alt);border:1px solid var(--border-subtle);border-radius:8px;padding:14px;}
+  .compare-card-title{font-family:var(--mono);font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;font-weight:500;}
+  .compare-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
+  .compare-year{font-family:var(--mono);font-size:11px;color:var(--text-muted);}
+  .compare-val{font-family:var(--mono);font-size:13px;font-weight:700;}
+  .compare-diff{margin-top:10px;padding-top:10px;border-top:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between;}
+  .compare-diff-val{font-family:var(--mono);font-size:12px;font-weight:600;}
+  .modal-chart-wrap{position:relative;height:280px;margin:20px 0;}
+  
+  /* Responsive */
+  @media(max-width:768px){
+    header{padding:12px 16px;}
+    main{padding:16px;}
+    .kpi-grid{grid-template-columns:1fr;}
     .charts-row{grid-template-columns:1fr;}
-    .modal-kpi,.compare-block{grid-template-columns:1fr 1fr;}
-    main{padding:16px;}header{padding:12px 16px;}
-    .tabs-bar{padding:0 12px;overflow-x:auto;}
-    .mese-compare-grid{grid-template-columns:1fr;}
+    .modal-kpi{grid-template-columns:1fr;}
+    .compare-block{grid-template-columns:1fr;}
   }
 </style>
 </head>
 <body>
 
+<!-- ═══ HEADER ═══ -->
 <header>
-  <div class="logo">Fischer Italia <em>·</em> Cruscotto</div>
+  <div class="logo"><em>●</em>  FISCHER ITALIA · CRUSCOTTO</div>
   <div class="header-right">
-    <div class="dot-live" id="dot-live" style="display:none"></div>
-    <div class="header-meta" id="header-meta">Caricamento…</div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--muted2);margin-left:12px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;">v 06/05/2026</div>
+    <div class="header-meta">
+      <div id="header-user">Cubaiu Loris · Cod. 400542</div>
+      <div id="header-date" style="font-size:10px;margin-top:2px;">—</div>
+    </div>
+    <div class="dot-live" title="Live"></div>
   </div>
 </header>
 
-<div class="tabs-bar">
-  <button class="tab active" onclick="showPanel('overview',this)">Overview</button>
-  <button class="tab" onclick="showPanel('clienti',this)">Clienti</button>
-  <button class="tab" onclick="showPanel('gamma',this)">Gamma Prodotti</button>
-  <button class="tab" onclick="showPanel('pipeline',this)">Pipeline</button>
-  <button class="tab" onclick="showPanel('wilson',this)">Wilson Ordini</button>
-  <button class="tab" onclick="showPanel('upload',this)">Aggiorna Dati</button>
-</div>
+<!-- ═══ TABS ═══ -->
+<nav class="tabs-bar">
+  <button class="tab active" onclick="switchPanel('overview')">OVERVIEW</button>
+  <button class="tab" onclick="switchPanel('clienti')">CLIENTI</button>
+  <button class="tab" onclick="switchPanel('gamma')">GAMMA PRODOTTI</button>
+  <button class="tab" onclick="switchPanel('pipeline')">PIPELINE</button>
+  <button class="tab" onclick="switchPanel('wilson')">WILSON ORDINI</button>
+  <button class="tab" onclick="switchPanel('aggiorna')">AGGIORNA DATI</button>
+</nav>
 
+<!-- ═══ MAIN CONTENT ═══ -->
 <main>
 
 <!-- ═══ OVERVIEW ═══ -->
 <div class="panel active" id="panel-overview">
-  <div id="overview-loader" class="loader-wrap">
-    <div class="loader-spinner"></div>
-    <div class="loader-text">Caricamento dati…</div>
-  </div>
-  <div id="overview-content" style="display:none">
-    <div class="section-title" id="section-kpi-title">KPI Area</div>
-    <div class="kpi-grid" id="kpi-grid"></div>
-    <div class="section-title" id="section-mese-title">Confronto mese corrente</div>
-    <div class="mese-compare-grid" id="mese-compare-grid"></div>
-    <div class="charts-row">
-      <div class="chart-box"><div class="chart-title" id="chart-mesi-title">Andamento mensile</div><div class="chart-wrap"><canvas id="chart-mesi"></canvas></div></div>
-      <div class="chart-box"><div class="chart-title">Distribuzione per gamma</div><div class="chart-wrap"><canvas id="chart-gamma"></canvas></div></div>
-      <div class="chart-box full"><div class="chart-title" id="chart-top15-title">Top 15 clienti</div><div class="chart-wrap tall"><canvas id="chart-top15"></canvas></div></div>
+  <div style="max-width:1400px;margin:0 auto;">
+    
+    <!-- KPI Principali -->
+    <div class="section-title">Fatturato progressivo</div>
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">Progressivo 2025</div>
+        <div class="kpi-val" id="kpi-prog-2025">—</div>
+        <div class="kpi-sub" id="kpi-prog-2025-mese">—</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Progressivo 2026</div>
+        <div class="kpi-val" id="kpi-prog-2026">—</div>
+        <div class="kpi-sub" id="kpi-prog-2026-mese">—</div>
+        <div class="kpi-delta" id="kpi-prog-delta">—</div>
+      </div>
     </div>
+    
+    <!-- KPI Secondari (compatte) -->
+    <div class="section-title">Metriche area</div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));">
+      <div class="kpi">
+        <div class="kpi-label">Clienti attivi</div>
+        <div class="kpi-val" id="kpi-clienti">—</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Media/cliente</div>
+        <div class="kpi-val" id="kpi-media-cliente">—</div>
+      </div>
+    </div>
+    
+    <!-- Confronto Mese Corrente -->
+    <div class="section-title" style="margin-top:28px;">Mese corrente</div>
+    <div class="mese-compare-grid">
+      <div class="mese-compare-card">
+        <div class="mese-card-label">Mese corrente 2025</div>
+        <div class="mese-row">
+          <span class="mese-year">2025</span>
+          <span class="mese-val" id="mese-2025">—</span>
+        </div>
+      </div>
+      <div class="mese-compare-card">
+        <div class="mese-card-label">Mese corrente 2026</div>
+        <div class="mese-row">
+          <span class="mese-year">2026</span>
+          <span class="mese-val" id="mese-2026">—</span>
+        </div>
+        <div class="mese-divider"></div>
+        <div class="mese-diff">
+          <span class="mese-diff-label">Differenza</span>
+          <div class="kpi-delta" id="mese-delta">—</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Grafici -->
+    <div class="section-title" style="margin-top:28px;">Andamento</div>
+    <div class="charts-row">
+      <div class="chart-box">
+        <div class="chart-title">Andamento mensile 2025 vs 2026</div>
+        <div class="chart-wrap">
+          <canvas id="chart-andamento"></canvas>
+        </div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-title">Trend progressivo per anno</div>
+        <div class="chart-wrap">
+          <canvas id="chart-progressivo"></canvas>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Top Clienti -->
+    <div class="section-title" style="margin-top:28px;">Top clienti (mese precedente)</div>
+    <div class="client-tabs">
+      <button class="client-tab active" onclick="switchClientTab('top10')">Top 10</button>
+      <button class="client-tab" onclick="switchClientTab('bottom10')">Ultimi 10</button>
+    </div>
+    <div id="top-clienti-wrap" class="tbl-wrap">
+      <table id="top-clienti-table">
+        <thead>
+          <tr>
+            <th style="width:40px;">#</th>
+            <th>Cliente</th>
+            <th style="text-align:right;">2025</th>
+            <th style="text-align:right;">2026</th>
+            <th style="text-align:center;">Var. %</th>
+          </tr>
+        </thead>
+        <tbody id="top-clienti-tbody">
+          <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px;font-family:var(--mono);font-size:12px;">Caricamento dati…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    
   </div>
 </div>
 
 <!-- ═══ CLIENTI ═══ -->
 <div class="panel" id="panel-clienti">
-  <div class="toolbar">
-    <input class="search-box" type="text" id="search-cliente" placeholder="🔍  Cerca cliente…" oninput="renderTabella()">
-    <select class="filter-sel" id="filter-gamma" onchange="renderTabella()"><option value="">Tutte le gamme</option></select>
-    <select class="filter-sel" id="filter-trend" onchange="renderTabella()">
-      <option value="">Tutti i trend</option>
-      <option value="pos">In crescita</option>
-      <option value="neg">In calo</option>
-    </select>
+  <div style="max-width:1200px;margin:0 auto;">
+    <div class="section-title">Elenco clienti</div>
+    <div class="toolbar">
+      <input id="search-clienti" class="search-box" placeholder="🔍  Cerca cliente, provincia, contact…" style="flex:1;">
+      <select id="sort-clienti" class="filter-sel">
+        <option value="nome">Nome A→Z</option>
+        <option value="fatturato">Fatturato ↓</option>
+        <option value="data">Data ↓</option>
+      </select>
+    </div>
+    <div class="tbl-wrap">
+      <table id="clienti-table">
+        <thead>
+          <tr>
+            <th>Ragione sociale</th>
+            <th>Provincia</th>
+            <th>Contact</th>
+            <th style="text-align:right;">Fatturato 2025</th>
+            <th style="text-align:right;">Progressivo 2026</th>
+            <th>Ultima visita</th>
+          </tr>
+        </thead>
+        <tbody id="clienti-tbody">
+          <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px;font-family:var(--mono);font-size:12px;">Caricamento dati…</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
-  <div class="tbl-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th onclick="sortBy('nome')">Cliente</th>
-          <th onclick="sortBy('gamma')">Gamma</th>
-          <th onclick="sortBy('fatt2024')" id="th-fatt-prev">Fatt. Anno prec.</th>
-          <th onclick="sortBy('prog2026')" id="th-prog">Progressivo</th>
-          <th onclick="sortBy('var_anno')">Var. anno</th>
-          <th onclick="sortBy('_varMese')" id="th-var-mese">Var. mese</th>
-          <th>Dettaglio</th>
-        </tr>
-      </thead>
-      <tbody id="tbl-body"></tbody>
-    </table>
-  </div>
-  <div id="tbl-count" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:10px;"></div>
 </div>
 
-<!-- ═══ GAMMA ═══ -->
+<!-- ═══ GAMMA PRODOTTI ═══ -->
 <div class="panel" id="panel-gamma">
-  <div class="kpi-grid" id="gamma-kpi-grid" style="margin-bottom:20px;"></div>
-  <div class="gamma-overview" id="gamma-overview"></div>
+  <div style="max-width:1200px;margin:0 auto;">
+    <div class="section-title">Performance per gamma</div>
+    <div id="gamma-content">
+      <div class="loader-wrap">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">Caricamento gamma prodotti…</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ PIPELINE ═══ -->
 <div class="panel" id="panel-pipeline">
-  <div id="pipeline-content" style="padding:24px 28px;max-width:1200px;margin:0 auto;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <div>
-        <div style="font-size:20px;font-weight:800;letter-spacing:-.01em;">Pipeline Clienti</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px;">Analisi frequenza ordini · Suggerimenti AI · Agenda ottimizzata</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <select id="pipeline-filter" onchange="renderPipeline()" style="font-family:var(--mono);font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);">
-          <option value="all">Tutti i clienti</option>
-          <option value="overdue">Scaduti</option>
-          <option value="due_soon">In scadenza</option>
-          <option value="ok">In regola</option>
-        </select>
-        <button onclick="generaAgendaMese()" style="font-family:var(--mono);font-size:12px;padding:6px 14px;border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:6px;cursor:pointer;font-weight:600;">📅 Genera Agenda</button>
+  <div style="max-width:1200px;margin:0 auto;">
+    <div class="section-title">Pipeline vendite</div>
+    <div id="pipeline-content">
+      <div class="loader-wrap">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">Caricamento pipeline…</div>
       </div>
     </div>
-    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-      <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-family:var(--mono);color:var(--muted);"><span style="width:10px;height:10px;border-radius:50%;background:var(--danger);display:inline-block;"></span>Scaduto</div>
-      <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-family:var(--mono);color:var(--muted);"><span style="width:10px;height:10px;border-radius:50%;background:var(--warn);display:inline-block;"></span>In scadenza</div>
-      <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-family:var(--mono);color:var(--muted);"><span style="width:10px;height:10px;border-radius:50%;background:var(--ok);display:inline-block;"></span>Mese coperto</div>
-      <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-family:var(--mono);color:var(--muted);"><span style="width:10px;height:10px;border-radius:50%;background:var(--muted2);display:inline-block;"></span>Frequenza bassa</div>
-    </div>
-    <div id="pipeline-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;"></div>
-    <div id="agenda-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;overflow-y:auto;">
-      <div style="background:var(--surface);border-radius:14px;max-width:680px;margin:40px auto;padding:28px;position:relative;">
-        <button onclick="document.getElementById('agenda-modal').style.display='none'" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);">✕</button>
-        <div style="font-size:17px;font-weight:800;margin-bottom:4px;">📅 Agenda del mese</div>
-        <div style="font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:20px;">Ordine visite ottimizzato per la settimana</div>
-        <div id="agenda-content" style="font-family:var(--mono);font-size:12px;line-height:1.8;"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ UPLOAD ═══ -->
-<div class="panel" id="panel-upload">
-  <div style="max-width:560px;margin:32px auto;">
-    <h2 style="font-size:17px;font-weight:800;margin-bottom:6px;">Aggiorna i dati</h2>
-    <p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:24px;">Carica i file Excel. Verranno parsati nel browser e inviati su GitHub (branch <code>data</code>).</p>
-    <div class="section-title">00 · Configurazione GitHub</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
-      <div><div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px;">OWNER/REPO</div><input id="gh-repo" class="search-box" style="width:100%;font-size:12px;" placeholder="loris/fischer-cubaiu" oninput="saveConfig()"></div>
-      <div><div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px;">PERSONAL ACCESS TOKEN</div><input id="gh-token" class="search-box" type="password" style="width:100%;font-size:12px;" placeholder="ghp_…" oninput="saveConfig()"></div>
-    </div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:24px;">Token salvato solo nel browser. Scope: <code style="color:var(--accent);">repo</code></div>
-    <div class="section-title">01 · Fatturato rolling consuntivo</div>
-    <div class="upload-zone" id="upload-zone-rolling" onclick="document.getElementById('file-input-rolling').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event,'rolling')">
-      <div class="upload-icon">📊</div><div style="font-weight:700;margin-bottom:4px;" id="rolling-name">Trascina il file qui</div>
-      <div class="upload-note">oppure clicca per selezionare</div><div class="upload-pattern">ordini_mancanti_su_rolling_consuntivo*.xlsx</div>
-    </div>
-    <input type="file" id="file-input-rolling" accept=".xlsx" style="display:none" onchange="handleFile(this.files[0],'rolling')">
-    <div id="status-rolling" style="margin-top:8px;font-family:var(--mono);font-size:11px;min-height:16px;"></div>
-    <div id="preview-rolling" style="display:none;margin-top:8px;padding:10px 14px;background:var(--ok-l);border:1px solid #86efac;border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--ok);line-height:1.9;"></div>
-    <div class="section-title" style="margin-top:24px;">02 · Penetrazione gamma prodotti</div>
-    <div class="upload-zone" id="upload-zone-gamma" onclick="document.getElementById('file-input-gamma').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event,'gamma')">
-      <div class="upload-icon">🗂️</div><div style="font-weight:700;margin-bottom:4px;" id="gamma-name">Trascina il file qui</div>
-      <div class="upload-note">oppure clicca per selezionare</div><div class="upload-pattern">*_report_penetrazione_gamma_prodotti_*.xlsx</div>
-    </div>
-    <input type="file" id="file-input-gamma" accept=".xlsx" style="display:none" onchange="handleFile(this.files[0],'gamma')">
-    <div id="status-gamma" style="margin-top:8px;font-family:var(--mono);font-size:11px;min-height:16px;"></div>
-    <div id="preview-gamma" style="display:none;margin-top:8px;padding:10px 14px;background:var(--ok-l);border:1px solid #86efac;border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--ok);line-height:1.9;"></div>
-    <div class="section-title" style="margin-top:24px;">03 · Fatturato gruppi CEDI</div>
-    <div class="upload-zone" id="upload-zone-cedi" onclick="document.getElementById('file-input-cedi').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event,'cedi')">
-      <div class="upload-icon">🏢</div><div style="font-weight:700;margin-bottom:4px;" id="cedi-name">Trascina il file qui</div>
-      <div class="upload-note">oppure clicca per selezionare</div><div class="upload-pattern">Agente_*_Monitoraggio_cedi.xlsx</div>
-    </div>
-    <input type="file" id="file-input-cedi" accept=".xlsx" style="display:none" onchange="handleFile(this.files[0],'cedi')">
-    <div id="status-cedi" style="margin-top:8px;font-family:var(--mono);font-size:11px;min-height:16px;"></div>
-    <div id="preview-cedi" style="display:none;margin-top:8px;padding:10px 14px;background:var(--ok-l);border:1px solid #86efac;border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--ok);line-height:1.9;"></div>
-    <button id="btn-pubblica" onclick="pubblicaSuGitHub()" style="display:none;margin-top:24px;width:100%;padding:13px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:13px;font-weight:700;border:none;border-radius:8px;cursor:pointer;letter-spacing:.04em;">🚀  PUBBLICA SU GITHUB</button>
-    <div id="upload-log" style="display:none;margin-top:14px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;line-height:2;"></div>
   </div>
 </div>
 
 <!-- ═══ WILSON ORDINI ═══ -->
 <div class="panel" id="panel-wilson">
-<div style="max-width:1100px;margin:0 auto;">
-  <div class="section-title" style="margin-bottom:12px;">Riepilogo ordini Wilson</div>
-  <div class="kpi-grid" id="wilson-kpi" style="margin-bottom:24px;">
-    <div class="kpi"><div class="kpi-label">Ordini caricati</div><div class="kpi-val" id="wk-ordini">—</div></div>
-    <div class="kpi"><div class="kpi-label">Totale fatturato</div><div class="kpi-val" id="wk-totale">—</div></div>
-    <div class="kpi"><div class="kpi-label">Articoli distinti</div><div class="kpi-val" id="wk-articoli">—</div></div>
-    <div class="kpi"><div class="kpi-label">Valore medio ordine</div><div class="kpi-val" id="wk-media">—</div></div>
-  </div>
-  <div class="section-title">Fonte dati · Supabase</div>
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
-    <button onclick="wilsonCaricaDaSupabase()" style="font-family:var(--mono);font-size:12px;font-weight:600;padding:9px 18px;border:none;background:var(--accent);color:#fff;border-radius:7px;cursor:pointer;">↻ Aggiorna da Supabase</button>
-    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Legge direttamente le tabelle <code>ordini</code> e <code>righe_ordine</code></div>
-  </div>
-  <div id="wilson-status" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:16px;min-height:16px;"></div>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
-    <input id="wilson-search" class="search-box" placeholder="🔍  Cerca cliente, cod. art., descrizione…" style="flex:1;min-width:200px;" oninput="wilsonRender()">
-    <select id="wilson-sort" class="search-box" style="font-family:var(--mono);font-size:12px;" onchange="wilsonRender()">
-      <option value="data-desc">Data ↓</option>
-      <option value="data-asc">Data ↑</option>
-      <option value="totale-desc">Totale ↓</option>
-      <option value="totale-asc">Totale ↑</option>
-    </select>
-    <button onclick="wilsonExportCSV()" style="font-family:var(--mono);font-size:11px;font-weight:600;padding:8px 14px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);cursor:pointer;color:var(--text2);">⬇ CSV</button>
-  </div>
-  <div style="overflow-x:auto;">
-  <table id="wilson-table">
-    <thead>
-      <tr>
-        <th style="width:32px;"></th>
-        <th>N° Ordine</th><th>Data</th><th>Cliente</th><th>N° Cliente</th>
-        <th style="text-align:right;">Articoli</th>
-        <th style="text-align:right;">Totale EUR</th>
-        <th>Pagamento</th>
-      </tr>
-    </thead>
-    <tbody id="wilson-tbody">
-      <tr><td colspan="8" style="text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px;padding:40px;">Clicca "Aggiorna da Supabase" per caricare gli ordini</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <div id="wilson-drawer" style="display:none;margin-top:16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <span id="wilson-drawer-title" style="font-weight:800;font-size:14px;"></span>
-      <button onclick="document.getElementById('wilson-drawer').style.display='none'" style="font-family:var(--mono);font-size:11px;border:1px solid var(--border2);border-radius:6px;padding:4px 10px;background:var(--surface);cursor:pointer;color:var(--muted);">✕ Chiudi</button>
+  <div style="max-width:1200px;margin:0 auto;">
+    <div class="section-title">Riepilogo ordini Wilson</div>
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">Ordini caricati</div>
+        <div class="kpi-val" id="wk-ordini">—</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Totale fatturato</div>
+        <div class="kpi-val" id="wk-totale">—</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Articoli distinti</div>
+        <div class="kpi-val" id="wk-articoli">—</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Valore medio ordine</div>
+        <div class="kpi-val" id="wk-media">—</div>
+      </div>
     </div>
-    <div style="overflow-x:auto;">
-    <table id="wilson-art-table">
-      <thead>
-        <tr>
-          <th>Cod. Art.</th><th>Descrizione</th>
-          <th style="text-align:right;">Qtà</th><th>UM</th>
-          <th style="text-align:right;">Prezzo unit.</th>
-          <th>Sconti %</th>
-          <th style="text-align:right;">Importo EUR</th>
-        </tr>
-      </thead>
-      <tbody id="wilson-art-tbody"></tbody>
-    </table>
+    <div class="section-title">Fonte dati · Supabase</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+      <button onclick="wilsonCaricaDaSupabase()" style="font-family:var(--mono);font-size:12px;font-weight:600;padding:9px 18px;border:none;background:var(--accent);color:#fff;border-radius:7px;cursor:pointer;transition:all .15s;">↻ Aggiorna da Supabase</button>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);">Legge direttamente le tabelle <code style="background:var(--surface-alt);padding:2px 6px;border-radius:4px;">ordini</code> e <code style="background:var(--surface-alt);padding:2px 6px;border-radius:4px;">righe_ordine</code></div>
+    </div>
+    <div id="wilson-status" style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-bottom:16px;min-height:16px;"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+      <input id="wilson-search" class="search-box" placeholder="🔍  Cerca cliente, cod. art., descrizione…" style="flex:1;min-width:200px;">
+      <select id="wilson-sort" class="filter-sel" onchange="wilsonRender()">
+        <option value="data-desc">Data ↓</option>
+        <option value="data-asc">Data ↑</option>
+        <option value="totale-desc">Totale ↓</option>
+        <option value="totale-asc">Totale ↑</option>
+      </select>
+      <button onclick="wilsonExportCSV()" style="font-family:var(--mono);font-size:11px;font-weight:600;padding:8px 14px;border:1px solid var(--border);border-radius:7px;background:var(--surface-alt);cursor:pointer;color:var(--text);">⬇ CSV</button>
+    </div>
+    <div class="tbl-wrap">
+      <table id="wilson-table">
+        <thead>
+          <tr>
+            <th style="width:32px;"></th>
+            <th>N° Ordine</th><th>Data</th><th>Cliente</th><th>N° Cliente</th>
+            <th style="text-align:right;">Articoli</th>
+            <th style="text-align:right;">Totale EUR</th>
+            <th>Pagamento</th>
+          </tr>
+        </thead>
+        <tbody id="wilson-tbody">
+          <tr><td colspan="8" style="text-align:center;color:var(--text-muted);font-family:var(--mono);font-size:12px;padding:40px;">Clicca "Aggiorna da Supabase" per caricare gli ordini</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="wilson-drawer" style="display:none;margin-top:16px;background:var(--surface-alt);border:1px solid var(--border-subtle);border-radius:10px;padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span id="wilson-drawer-title" style="font-weight:700;font-size:14px;"></span>
+        <button onclick="document.getElementById('wilson-drawer').style.display='none'" style="font-family:var(--mono);font-size:11px;border:1px solid var(--border-subtle);border-radius:6px;padding:4px 10px;background:var(--surface);cursor:pointer;color:var(--text-muted);">✕ Chiudi</button>
+      </div>
+      <div style="overflow-x:auto;">
+      <table id="wilson-art-table">
+        <thead>
+          <tr>
+            <th>Cod. Art.</th><th>Descrizione</th>
+            <th style="text-align:right;">Qtà</th><th>UM</th>
+            <th style="text-align:right;">Prezzo unit.</th>
+            <th>Sconti %</th>
+            <th style="text-align:right;">Importo EUR</th>
+          </tr>
+        </thead>
+        <tbody id="wilson-art-tbody"></tbody>
+      </table>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- ═══ AGGIORNA DATI ═══ -->
+<div class="panel" id="panel-aggiorna">
+  <div style="max-width:800px;margin:0 auto;">
+    <div class="section-title">Importa dati email</div>
+    <div style="background:var(--surface-alt);border:1px solid var(--border-subtle);border-radius:10px;padding:20px;margin-bottom:20px;">
+      <p style="font-size:14px;line-height:1.6;color:var(--text-secondary);margin-bottom:12px;">
+        Questa sezione sincronizza i preventivi Fischer dal tuo account Gmail e carica i dati nel database Supabase.
+      </p>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);line-height:1.8;">
+        • Gmail legge automaticamente gli attachment PDF dai preventivi<br>
+        • I dati vengono parsati e memorizzati in Supabase<br>
+        • Aggiorna il dashboard in tempo reale
+      </div>
+    </div>
+    <div class="section-title">Credenziali e configurazione</div>
+    <div id="aggiorna-content">
+      <div class="loader-wrap">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">Caricamento configurazione…</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 </main>
@@ -382,30 +444,45 @@
       <button class="close-btn" onclick="closeModalDirect()">×</button>
     </div>
     <div class="modal-kpi" id="m-kpi"></div>
-    <div class="modal-section-title" id="m-mese-title">Confronto mese corrente</div>
+    <div class="modal-section-title">Confronto mese corrente</div>
     <div class="compare-block" id="m-compare-block"></div>
-    <div class="modal-section-title" id="m-prog-title">Confronto progressivo</div>
+    <div class="modal-section-title">Confronto progressivo</div>
     <div class="compare-block" id="m-prog-block"></div>
-    <div class="modal-section-title" id="m-chart-title">Andamento mensile</div>
+    <div class="modal-section-title">Andamento mensile</div>
     <div class="modal-chart-wrap"><canvas id="m-chart"></canvas></div>
-    <div class="modal-section-title">Gamma prodotti</div>
-    <div class="gamma-tabs" id="m-gamma-tabs"></div>
-    <div id="m-gamma-panels"></div>
   </div>
 </div>
 
-<!-- Dati statici inline (pipeline e indirizzi) -->
+<!-- Scripts -->
 <script src="dati_statici.js"></script>
-
-<!-- Librerie parse -->
 <script src="parse_rolling.js"></script>
 <script src="parse_gamma.js"></script>
-
-<!-- Logica principale -->
 <script src="cruscotto_main.js"></script>
-
-<!-- Wilson Supabase -->
 <script src="wilson_supabase.js"></script>
+
+<!-- Functions per tab switching -->
+<script>
+function switchPanel(panelName){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+panelName).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function switchClientTab(tabName){
+  document.querySelectorAll('.client-tab').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+  renderTopClienti(tabName);
+}
+
+function closeModalBg(e){
+  if(e.target.id==='modal')document.getElementById('modal').classList.remove('open');
+}
+
+function closeModalDirect(){
+  document.getElementById('modal').classList.remove('open');
+}
+</script>
 
 </body>
 </html>
