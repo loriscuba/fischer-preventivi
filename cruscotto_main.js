@@ -711,6 +711,10 @@ function mostraErrore(msg) {
 function renderClientiTab() {
   if (!clienti || clienti.length === 0) return;
   
+  // Leggi i filtri
+  const searchInput = document.getElementById('search-clienti');
+  const sortSelect = document.getElementById('sort-clienti');
+  
   let q = searchInput ? searchInput.value.toLowerCase() : '';
   let sortType = sortSelect ? sortSelect.value : 'nome';
   
@@ -755,7 +759,170 @@ function renderClientiTab() {
   }
 }
 
-function buildOverview() {
+// ═══════════════════════════════════════════════════════
+//  MODAL DETTAGLIO CLIENTE
+// ═══════════════════════════════════════════════════════
+function openModal(cod) {
+  const c = clienti.find(x => x.cod === cod);
+  if (!c) return;
+  
+  const va = c.var_anno;
+  const mc = c.mese_corrente || {};
+  
+  // Header
+  document.getElementById('m-nome').textContent = c.nome;
+  document.getElementById('m-sub').textContent  = `Cod. ${c.cod} · Gamma: ${c.gamma}`;
+  
+  // KPI principali
+  document.getElementById('m-kpi').innerHTML = [
+    { label: `Fatturato ${ANNO_PREV}`,   val: fmt(c._prev) },
+    { label: `Progressivo ${ANNO_CORR}`, val: fmt(c._prog) },
+    { label: 'Variazione anno',          val: fmtPct(va), cls: deltaClass(va) },
+  ].map(k => `<div class="kpi">
+    <div class="kpi-label">${k.label}</div>
+    <div class="kpi-val" style="font-size:17px;">${k.cls ? `<span class="pill ${k.cls}">${k.val}</span>` : k.val}</div>
+  </div>`).join('');
+
+  // Mese corrente
+  const meseCorr = (mc.consegnato||0) + (mc.in_preparazione||0) + (mc.da_spedire||0);
+  const mesePrev = mc.fatt_mese_prev || 0;
+  const cediTot  = (c.cedi_dettaglio || []).reduce((s, g) => s + (g.fatt || 0), 0);
+  const meseTot  = meseCorr + cediTot;
+  const meseDiff = meseTot - mesePrev;
+  const mesePct  = mesePrev > 0 ? meseDiff/mesePrev*100 : null;
+  
+  document.getElementById('m-mese-title').textContent = `Confronto mese corrente — ${DATA.aggiornato||''}`;
+  document.getElementById('m-compare-block').innerHTML = `
+    <div class="compare-card">
+      <div class="compare-card-title">Fatturato mese</div>
+      <div class="compare-row"><span class="compare-year">${ANNO_PREV}</span><span class="compare-val">${fmt(mesePrev)}</span></div>
+      <div class="compare-row"><span class="compare-year">${ANNO_CORR} Rolling</span><span class="compare-val">${fmt(meseCorr)}</span></div>
+      ${cediTot > 0 ? `<div class="compare-row"><span class="compare-year" style="color:var(--accent);">+ CEDI</span><span class="compare-val" style="color:var(--accent);">${fmt(cediTot)}</span></div>` : ''}
+      <div class="compare-diff">
+        <span class="compare-diff-label">Differenza vs ${ANNO_PREV}</span>
+        <span class="pill ${deltaClass(meseDiff)}">${meseDiff>=0?'+':''}${fmt(meseDiff)} ${mesePct!=null?fmtPct(mesePct):''}</span>
+      </div>
+    </div>
+    <div class="compare-card">
+      <div class="compare-card-title">Dettaglio mese ${ANNO_CORR}</div>
+      <div class="compare-row"><span class="compare-year">Consegnato</span><span class="compare-val">${fmt(mc.consegnato)}</span></div>
+      <div class="compare-row"><span class="compare-year">In preparazione</span><span class="compare-val">${fmt(mc.in_preparazione)}</span></div>
+      <div class="compare-row"><span class="compare-year">Da spedire</span><span class="compare-val">${fmt(mc.da_spedire)}</span></div>
+      ${cediTot > 0 ? `<div class="compare-row" style="border-top:1px dashed var(--border);margin-top:4px;padding-top:6px;"><span class="compare-year" style="color:var(--accent);">CEDI</span><span class="compare-val" style="color:var(--accent);">${fmt(cediTot)}</span></div>` : ''}
+    </div>`;
+
+  // Progressivo
+  const progPrev = mc.fatt_prog_prev || 0;
+  const progCorr = mc.fatt_prog_corr || c._prog || 0;
+  const progDiff = progCorr - progPrev;
+  const progPct  = progPrev > 0 ? progDiff/progPrev*100 : null;
+  
+  document.getElementById('m-prog-title').textContent = `Confronto progressivo Gen–${DATA.aggiornato?.split('/')[0]||'mese'} ${ANNO_PREV} vs ${ANNO_CORR}`;
+  document.getElementById('m-prog-block').innerHTML = `
+    <div class="compare-card">
+      <div class="compare-card-title">Progressivo anno</div>
+      <div class="compare-row"><span class="compare-year">${ANNO_PREV}</span><span class="compare-val">${fmt(progPrev)}</span></div>
+      <div class="compare-row"><span class="compare-year">${ANNO_CORR}</span><span class="compare-val">${fmt(progCorr)}</span></div>
+      <div class="compare-diff"><span class="compare-diff-label">Differenza</span>
+        <span class="pill ${deltaClass(progDiff)}">${progDiff>=0?'+':''}${fmt(progDiff)} ${progPct!=null?fmtPct(progPct):''}</span>
+      </div>
+    </div>
+    <div class="compare-card">
+      <div class="compare-card-title">Fatturato pieno ${ANNO_PREV} vs prog. ${ANNO_CORR}</div>
+      <div class="compare-row"><span class="compare-year">Fatt. ${ANNO_PREV}</span><span class="compare-val">${fmt(c._prev)}</span></div>
+      <div class="compare-row"><span class="compare-year">Prog. ${ANNO_CORR}</span><span class="compare-val">${fmt(c._prog)}</span></div>
+      <div class="compare-diff"><span class="compare-diff-label">Variazione</span>
+        <span class="pill ${deltaClass(va)}">${fmtPct(va)}</span>
+      </div>
+    </div>`;
+
+  // Grafico andamento mensile
+  if (mChart) { mChart.destroy(); mChart = null; }
+  const MESI_SHORT = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  const d_prev = MESI_SHORT.map((_, i) => {
+    const key = MESI_SHORT[i] + '25';
+    return (c.mesi2025||{})[key] || 0;
+  });
+  const d_corr = MESI_SHORT.map((_, i) => {
+    const key = MESI_SHORT[i] + '26';
+    return (c.mesi2026||{})[key] || null;
+  });
+  
+  const mChartEl = document.getElementById('m-chart');
+  if (mChartEl) {
+    mChart = new Chart(mChartEl.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: MESI_SHORT,
+        datasets: [
+          { label: String(ANNO_PREV), data: d_prev, backgroundColor: 'rgba(107,114,128,.18)', borderColor: 'rgba(107,114,128,.7)', borderWidth: 1.5, borderRadius: 3 },
+          { label: String(ANNO_CORR), data: d_corr, backgroundColor: 'rgba(26,108,255,.22)',  borderColor: 'rgba(26,108,255,.8)',  borderWidth: 1.5, borderRadius: 3 },
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'bottom', labels: {font:{size:11,family:"'DM Mono',monospace"},color:'var(--text-muted)',boxHeight:6,padding:12} },
+          tooltip: { backgroundColor: 'rgba(13,17,23,0.9)', titleFont: {family:"'DM Mono',monospace",size:11}, bodyFont: {family:"'DM Mono',monospace",size:11}, padding: 8, displayColors: true, callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.parsed.y) } }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: {font:{size:10,family:"'DM Mono',monospace"},color:'var(--text-muted)',callback:v=>''}, grid: {color:'var(--border-subtle)',drawBorder:false}, border: {display:false} },
+          x: { ticks: {font:{size:10,family:"'DM Mono',monospace"},color:'var(--text-muted)'}, grid: {display:false}, border: {display:false} }
+        }
+      }
+    });
+  }
+
+  // Gamma prodotti (se disponibile)
+  const gd = c.gamma_dettaglio || {};
+  const settori = Object.keys(gd);
+  const tabsEl   = document.getElementById('m-gamma-tabs');
+  const panelsEl = document.getElementById('m-gamma-panels');
+  
+  if (settori.length === 0) {
+    if (tabsEl) tabsEl.innerHTML = '';
+    if (panelsEl) panelsEl.innerHTML = '<div style="font-family:var(--mono);font-size:12px;color:var(--muted);padding:12px 0;">Nessun dato gamma disponibile.</div>';
+  } else {
+    if (tabsEl) tabsEl.innerHTML = settori.map((s,i) => `
+      <button class="gamma-tab-btn${i===0?' active':''}" onclick="switchGammaTab(this,'gtab-${cod.replace(/\W/g,'')}-${i}')">${s}</button>`).join('');
+    if (panelsEl) panelsEl.innerHTML = settori.map((s,i) => {
+      const sg = gd[s];
+      const pctImm = sg.perc_immancabili != null ? Math.round(sg.perc_immancabili * 100) : null;
+      const pctStr = sg.perc_strategiche != null ? Math.round(sg.perc_strategiche * 100) : null;
+      const colImm = pctImm == null ? '#9ca3af' : pctImm >= 80 ? '#0d9e6e' : pctImm >= 50 ? '#d97706' : '#dc2626';
+      const prodotti = sg.prodotti || [];
+      return `<div class="gamma-settore-panel${i===0?' active':''}" id="gtab-${cod.replace(/\W/g,'')}-${i}">
+        <div class="gamma-header-row" style="margin-bottom:12px;">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">Fatt. 2025: <strong style="color:var(--text)">${fmt(sg.fatt2025)}</strong></div>
+          <div class="gamma-pct-pills">
+            ${pctImm != null ? `<span class="pct-pill imm">Imm. ${pctImm}%</span>` : ''}
+            ${pctStr != null ? `<span class="pct-pill str">Str. ${pctStr}%</span>` : ''}
+          </div>
+        </div>
+        ${pctImm != null ? `<div class="gauge-bar" style="margin-bottom:12px;height:4px;"><div class="gauge-fill" style="width:${Math.min(pctImm,100)}%;background:${colImm}"></div></div>` : ''}
+        <div class="prod-list">
+          ${prodotti.map(p => `
+            <div class="prod-item ${p.valore > 0 ? 'has-value' : 'missing'}">
+              <span class="prod-name">${p.nome}</span>
+              <span class="prod-flag ${p.flag === 'Strategica-Immancabile' ? 'imm' : 'str'}">${p.flag === 'Strategica-Immancabile' ? 'IMM' : 'STR'}</span>
+              <span class="prod-val ${p.valore > 0 ? '' : 'zero'}">${p.valore > 0 ? fmt(p.valore) : '—'}</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Apri modal
+  document.getElementById('modal').classList.add('open');
+}
+
+function switchGammaTab(btn, panelId) {
+  btn.closest('.modal').querySelectorAll('.gamma-tab-btn').forEach(b => b.classList.remove('active'));
+  btn.closest('.modal').querySelectorAll('.gamma-settore-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(panelId)?.classList.add('active');
+}
   if (!DATA || !clienti.length) return;
   const tot_prev = clienti.reduce((s,c) => s + c._prev, 0);
   const tot_prog = clienti.reduce((s,c) => s + c._prog, 0);
