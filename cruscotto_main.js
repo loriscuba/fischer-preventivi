@@ -67,7 +67,14 @@ function getProgressivoUntilPrevMonth(cliente, anno) {
 }
 
 function renderOverview() {
-  if (!DATA || !clienti || clienti.length === 0) return;
+  console.log('[DEBUG] renderOverview() called');
+  console.log('[DEBUG] clienti.length:', clienti.length);
+  console.log('[DEBUG] DATA:', DATA);
+  
+  if (!DATA || !clienti || clienti.length === 0) {
+    console.warn('[DEBUG] No data or clienti empty, returning early');
+    return;
+  }
 
   const today = new Date();
   const meseCorrente = today.getMonth() + 1; // 1-12
@@ -672,23 +679,16 @@ function applicaDati(json) {
   MESI_KEYS_CORR   = DATA.mesi_keys_corr  || MESI_SHORT.map(m => m + String(ANNO_CORR).slice(-2));
   MESI_LABELS_PREV = DATA.mesi_labels_prev || DATA.mesi_labels_2024 || MESI_KEYS_PREV;
   MESI_LABELS_CORR = DATA.mesi_labels_corr || DATA.mesi_labels_2025 || MESI_KEYS_CORR;
-  document.getElementById('header-meta').innerHTML =
-    `${DATA.agente || 'Cubaiu Loris'} &nbsp;·&nbsp; Cod. ${DATA.cod_agente || '400542'}<br>Aggiornato: <strong>${DATA.aggiornato}</strong>`;
-  document.getElementById('dot-live').style.display = 'block';
-  document.getElementById('th-fatt-prev').textContent = `Fatt. ${ANNO_PREV}`;
-  document.getElementById('th-prog').textContent      = `Prog. ${ANNO_CORR}`;
-  document.getElementById('th-var-mese').textContent  = `Var. mese`;
-  buildFilters();
-  renderTabella();
   
-  // Chiama la nuova funzione di rendering per il layout moderno
+  // Aggiorna header con data di aggiornamento
+  const headerDate = document.getElementById('header-date');
+  if (headerDate) {
+    headerDate.textContent = `Aggiornato: ${DATA.aggiornato}`;
+  }
+  
+  // Carica la nuova funzione di rendering per il layout moderno
   renderOverview();
   
-  buildOverview();
-  const loaderEl = document.getElementById('overview-loader');
-  loaderEl.innerHTML = '<div class="loader-spinner"></div><div class="loader-text">Caricamento dati…</div>';
-  loaderEl.style.display = 'none';
-  document.getElementById('overview-content').style.display = 'block';
   if (uploadState._gammaBuf) { applicaGammaBuf(uploadState._gammaBuf); uploadState._gammaBuf = null; }
   if (uploadState._cediMap) {
     clienti.forEach(c => {
@@ -699,7 +699,9 @@ function applicaDati(json) {
 }
 
 function mostraErrore(msg) {
-  document.getElementById('overview-loader').innerHTML = `<div class="error-banner">${msg}</div>`;
+  console.error(msg);
+  // Nel nuovo layout, mostra l'errore in console
+  // Nel vecchio HTML cercava overview-loader che non esiste più
 }
 
 // ═══════════════════════════════════════════════════════
