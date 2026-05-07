@@ -1061,12 +1061,16 @@ function renderGamma() {
 const uploadState = { rolling: null, gamma: null, cedi: null };
 
 function loadConfig() {
-  document.getElementById('gh-repo').value  = localStorage.getItem('gh_repo')  || '';
-  document.getElementById('gh-token').value = localStorage.getItem('gh_token') || '';
+  const repoEl = document.getElementById('gh-repo');
+  const tokenEl = document.getElementById('gh-token');
+  if (repoEl) repoEl.value  = localStorage.getItem('gh_repo')  || '';
+  if (tokenEl) tokenEl.value = localStorage.getItem('gh_token') || '';
 }
 function saveConfig() {
-  localStorage.setItem('gh_repo',  document.getElementById('gh-repo').value.trim());
-  localStorage.setItem('gh_token', document.getElementById('gh-token').value.trim());
+  const repoEl = document.getElementById('gh-repo');
+  const tokenEl = document.getElementById('gh-token');
+  if (repoEl) localStorage.setItem('gh_repo',  repoEl.value.trim());
+  if (tokenEl) localStorage.setItem('gh_token', tokenEl.value.trim());
 }
 function handleDrop(e, tipo) {
   e.preventDefault();
