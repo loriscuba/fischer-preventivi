@@ -711,10 +711,6 @@ function mostraErrore(msg) {
 function renderClientiTab() {
   if (!clienti || clienti.length === 0) return;
   
-  // Leggi i filtri
-  const searchInput = document.getElementById('search-clienti');
-  const sortSelect = document.getElementById('sort-clienti');
-  
   let q = searchInput ? searchInput.value.toLowerCase() : '';
   let sortType = sortSelect ? sortSelect.value : 'nome';
   
