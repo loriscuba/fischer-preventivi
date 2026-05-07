@@ -923,6 +923,8 @@ function switchGammaTab(btn, panelId) {
   btn.classList.add('active');
   document.getElementById(panelId)?.classList.add('active');
 }
+
+function buildOverview() {
   if (!DATA || !clienti.length) return;
   const tot_prev = clienti.reduce((s,c) => s + c._prev, 0);
   const tot_prog = clienti.reduce((s,c) => s + c._prog, 0);
