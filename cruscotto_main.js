@@ -20,6 +20,311 @@ const fmt    = v => (v == null || isNaN(v)) ? '—' : '€\u202F' + Math.round(v
 const fmtK   = v => (v == null || isNaN(v)) ? '—' : '€\u202F' + Math.round(v/1000).toLocaleString('it-IT') + 'k';
 const fmtPct = v => (v == null || isNaN(v)) ? '—' : (v >= 0 ? '+' : '') + Math.round(v) + '%';
 
+// Funzione per ottenere il mese precedente (0-11)
+function getPrevMonth() {
+  const now = new Date();
+  return now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+}
+
+// Funzione per ottenere il nome del mese precedente
+function getPrevMonthName() {
+  const mesi = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  return mesi[getPrevMonth()];
+}
+
+function renderOverview() {
+  if (!DATA || !clienti || clienti.length === 0) return;
+
+  const today = new Date();
+  const meseCorrente = today.getMonth() + 1; // 1-12
+  const annoCorrente = today.getFullYear();
+  const prevMese = getPrevMonth(); // 0-11
+  const prevMeseName = getPrevMonthName();
+  
+  // ════════════════════════════════════════════════════════
+  // PROGRESSIVI (fino al mese precedente)
+  // ════════════════════════════════════════════════════════
+  const prog2025 = clienti.reduce((sum, c) => sum + getProgressivoUntilPrevMonth(c, 2025), 0);
+  const prog2026 = clienti.reduce((sum, c) => sum + getProgressivoUntilPrevMonth(c, 2026), 0);
+  const deltaProg = prog2025 === 0 ? null : Math.round(((prog2026 - prog2025) / prog2025) * 100);
+  
+  document.getElementById('kpi-prog-2025').textContent = fmtK(prog2025);
+  document.getElementById('kpi-prog-2025-mese').textContent = `fino a ${prevMeseName.toLowerCase()}`;
+  document.getElementById('kpi-prog-2026').textContent = fmtK(prog2026);
+  document.getElementById('kpi-prog-2026-mese').textContent = `fino a ${prevMeseName.toLowerCase()}`;
+  
+  const deltaEl = document.getElementById('kpi-prog-delta');
+  if (deltaProg !== null) {
+    deltaEl.className = 'kpi-delta ' + deltaClass(deltaProg);
+    deltaEl.textContent = fmtPct(deltaProg);
+  } else {
+    deltaEl.textContent = '—';
+    deltaEl.className = 'kpi-delta neu';
+  }
+  
+  // ════════════════════════════════════════════════════════
+  // KPI SECONDARI
+  // ════════════════════════════════════════════════════════
+  const nClienti = clienti.length;
+  const mediaClienti = nClienti > 0 ? prog2026 / nClienti : 0;
+  
+  document.getElementById('kpi-clienti').textContent = nClienti;
+  document.getElementById('kpi-media-cliente').textContent = fmtK(mediaClienti);
+  
+  // ════════════════════════════════════════════════════════
+  // MESE CORRENTE (ora - fino ad ora)
+  // ════════════════════════════════════════════════════════
+  let meseMese2025 = 0, meseMese2026 = 0;
+  clienti.forEach(c => {
+    const key2025 = `m${meseCorrente}_2025`;
+    const key2026 = `m${meseCorrente}_2026`;
+    meseMese2025 += (c[key2025] || 0);
+    meseMese2026 += (c[key2026] || 0);
+  });
+  
+  const deltaMese = meseMese2025 === 0 ? null : Math.round(((meseMese2026 - meseMese2025) / meseMese2025) * 100);
+  
+  document.getElementById('mese-2025').textContent = fmt(meseMese2025);
+  document.getElementById('mese-2026').textContent = fmt(meseMese2026);
+  
+  const meseDeltaEl = document.getElementById('mese-delta');
+  if (deltaMese !== null) {
+    meseDeltaEl.className = 'kpi-delta ' + deltaClass(deltaMese);
+    meseDeltaEl.textContent = fmtPct(deltaMese);
+  } else {
+    meseDeltaEl.textContent = '—';
+    meseDeltaEl.className = 'kpi-delta neu';
+  }
+  
+  // ════════════════════════════════════════════════════════
+  // HEADER DATA
+  // ════════════════════════════════════════════════════════
+  document.getElementById('header-date').textContent = today.toLocaleDateString('it-IT', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  
+  // ════════════════════════════════════════════════════════
+  // GRAFICI
+  // ════════════════════════════════════════════════════════
+  renderCharts();
+  
+  // ════════════════════════════════════════════════════════
+  // TOP CLIENTI (mese precedente)
+  // ════════════════════════════════════════════════════════
+  renderTopClienti('top10');
+}
+
+function renderTopClienti(tipo = 'top10') {
+  if (!clienti || clienti.length === 0) return;
+  
+  const prevMese = getPrevMonth(); // 0-11
+  const meseKey = `m${prevMese + 1}`; // m1, m2, ..., m12
+  
+  // Calcola i dati per il mese precedente per entrambi gli anni
+  const clientiData = clienti.map(c => {
+    const val2025 = c[`${meseKey}_2025`] || 0;
+    const val2026 = c[`${meseKey}_2026`] || 0;
+    const delta = val2025 === 0 ? 0 : Math.round(((val2026 - val2025) / val2025) * 100);
+    return {
+      nome: c.nome || 'N/A',
+      val2025,
+      val2026,
+      delta,
+      orig: c
+    };
+  }).filter(c => c.val2025 > 0 || c.val2026 > 0); // Solo clienti con movimento
+  
+  // Ordina per 2026 decrescente
+  clientiData.sort((a, b) => b.val2026 - a.val2026);
+  
+  // Seleziona Top 10 o Ultimi 10
+  let toShow = clientiData.slice(0, 10);
+  if (tipo === 'bottom10') {
+    toShow = clientiData.slice(-10).reverse();
+  }
+  
+  // Renderizza tabella
+  const tbody = document.getElementById('top-clienti-tbody');
+  tbody.innerHTML = toShow.map((c, i) => {
+    const deltaClass = c.delta > 0 ? 'pos' : c.delta < 0 ? 'neg' : 'neu';
+    return `<tr>
+      <td style="text-align:center;font-weight:600;color:var(--text-muted);">${i + 1}</td>
+      <td class="td-nome">${c.nome}</td>
+      <td style="text-align:right;">${fmt(c.val2025)}</td>
+      <td style="text-align:right;">${fmt(c.val2026)}</td>
+      <td style="text-align:center;"><span class="pill ${deltaClass}">${fmtPct(c.delta)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCharts() {
+  if (!clienti || clienti.length === 0) return;
+  
+  // Dati mensili per il grafico
+  const andamentoData2025 = [];
+  const andamentoData2026 = [];
+  const progressivoData2025 = [];
+  const progressivoData2026 = [];
+  
+  let cumul2025 = 0, cumul2026 = 0;
+  
+  for (let m = 1; m <= 12; m++) {
+    const key2025 = `m${m}_2025`;
+    const key2026 = `m${m}_2026`;
+    
+    let mese2025 = 0, mese2026 = 0;
+    clienti.forEach(c => {
+      mese2025 += (c[key2025] || 0);
+      mese2026 += (c[key2026] || 0);
+    });
+    
+    andamentoData2025.push(mese2025);
+    andamentoData2026.push(mese2026);
+    
+    cumul2025 += mese2025;
+    cumul2026 += mese2026;
+    
+    progressivoData2025.push(cumul2025);
+    progressivoData2026.push(cumul2026);
+  }
+  
+  const labels = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  
+  // Distruggi grafici precedenti se esistono
+  if (window.chartAndamento) window.chartAndamento.destroy();
+  if (window.chartProgressivo) window.chartProgressivo.destroy();
+  
+  // Grafico Andamento Mensile
+  const ctxAnd = document.getElementById('chart-andamento');
+  if (ctxAnd) {
+    window.chartAndamento = new Chart(ctxAnd, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: '2025',
+            data: andamentoData2025,
+            backgroundColor: '#e2e8f0',
+            borderColor: '#6e7681',
+            borderWidth: 0,
+            borderRadius: 4
+          },
+          {
+            label: '2026',
+            data: andamentoData2026,
+            backgroundColor: '#0969da',
+            borderColor: '#0969da',
+            borderWidth: 0,
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: {font:{size:11,family:"'DM Mono',monospace"},color:'var(--text-muted)',boxHeight:6,padding:12}
+          },
+          tooltip: {
+            backgroundColor: 'rgba(13,17,23,0.9)',
+            titleFont: {family:"'DM Mono',monospace",size:11},
+            bodyFont: {family:"'DM Mono',monospace",size:11},
+            padding: 8,
+            displayColors: true,
+            callbacks: {
+              label: ctx => ctx.dataset.label + ': ' + fmt(ctx.parsed.y)
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {font:{size:10,family:"'DM Mono',monospace"},color:'var(--text-muted)',callback:v=>''},
+            grid: {color:'var(--border-subtle)',drawBorder:false},
+            border: {display:false}
+          },
+          x: {
+            ticks: {font:{size:10,family:"'DM Mono',monospace"},color:'var(--text-muted)'},
+            grid: {display:false},
+            border: {display:false}
+          }
+        }
+      }
+    });
+  }
+  
+  // Grafico Progressivo
+  const ctxProg = document.getElementById('chart-progressivo');
+  if (ctxProg) {
+    window.chartProgressivo = new Chart(ctxProg, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Progressivo 2025',
+            data: progressivoData2025,
+            borderColor: '#6e7681',
+            backgroundColor: 'rgba(110,118,129,0.05)',
+            borderWidth: 2,
+            tension: 0.4,
+            fill: true,
+            pointRadius: 3,
+            pointBackgroundColor: '#6e7681'
+          },
+          {
+            label: 'Progressivo 2026',
+            data: progressivoData2026,
+            borderColor: '#0969da',
+            backgroundColor: 'rgba(9,105,218,0.05)',
+            borderWidth: 2,
+            tension: 0.4,
+            fill: true,
+            pointRadius: 3,
+            pointBackgroundColor: '#0969da'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: {font:{size:11,family:"'DM Mono',monospace"},color:'var(--text-muted)',boxHeight:6,padding:12}
+          },
+          tooltip: {
+            backgroundColor: 'rgba(13,17,23,0.9)',
+            titleFont: {family:"'DM Mono',monospace",size:11},
+            bodyFont: {family:"'DM Mono',monospace",size:11},
+            padding: 8,
+            displayColors: true,
+            callbacks: {
+              label: ctx => ctx.dataset.label + ': ' + fmt(ctx.parsed.y)
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {font:{size:10,family:"'DM Mono',monospace"},color:'var(--text-muted)',callback:v=>''},
+            grid: {color:'var(--border-subtle)',drawBorder:false},
+            border: {display:false}
+          },
+          x: {
+            ticks: {font:{size:10,family:"'DM Mono',monospace"},color:'var(--text-muted)'},
+            grid: {display:false},
+            border: {display:false}
+          }
+        }
+      }
+    });
+  }
+}
+
 function deltaClass(v) {
   if (v == null || isNaN(v)) return 'neu';
   return v > 0 ? 'pos' : v < 0 ? 'neg' : 'neu';
@@ -330,6 +635,10 @@ function applicaDati(json) {
   document.getElementById('th-var-mese').textContent  = `Var. mese`;
   buildFilters();
   renderTabella();
+  
+  // Chiama la nuova funzione di rendering per il layout moderno
+  renderOverview();
+  
   buildOverview();
   const loaderEl = document.getElementById('overview-loader');
   loaderEl.innerHTML = '<div class="loader-spinner"></div><div class="loader-text">Caricamento dati…</div>';
